@@ -1,0 +1,26 @@
+{
+    "env": {
+      "browser": true,
+      "node": true,
+      "es6": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:prettier/recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2020,
+      "sourceType": "module"
+    },
+    "rules": {
+      "quotes": ["error", "single"],
+      "semi": ["error", "always"],
+      "indent": ["error", 2],
+      "no-unused-vars": "warn",
+      "consistent-return": "error",
+      "eqeqeq": "error",
+      "max-len": ["error", 80],
+      "no-console": "warn"
+    }
+  }
+  
