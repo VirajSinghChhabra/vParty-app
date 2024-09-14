@@ -19,7 +19,7 @@ const port = process.env.PORT || 3000;
 
 // Transporter for sending emails (forgot password feature)
 const transporter = nodemailer.createTransport({
-    service: 'Gmail', // UPDATE THIS FOR PRODUCTION
+    service: 'Gmail', // *** IMPORTANT - UPDATE THIS FOR PRODUCTION, USE SECURE SERVICE PROVIDER API
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS 
@@ -119,7 +119,7 @@ app.post('/forgot-password', (req, res) => {
 
     // Generate a unique reset token then store it plus the expiry date in the db
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = Date.now() + 120000; // 20 mins reset time 
+    const resetTokenExpiry = Date.now() + 360000; // 1hr reset time 
 
     db.run(
         `UPDATE users SET resetToken = ?, resetTokenExpiry = ? WHERE email = ?`,
@@ -130,6 +130,7 @@ app.post('/forgot-password', (req, res) => {
             }
 
             // Send email with the reset link 
+            // *** IMPORTANT Change link for production ***
             const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
             const mailOptions = {
                 from: process.env.EMAIL_USER,
