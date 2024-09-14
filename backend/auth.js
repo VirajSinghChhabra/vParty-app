@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtokens');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const db = require('./database');
 
