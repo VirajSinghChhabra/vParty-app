@@ -112,6 +112,8 @@ app.delete('/delete-profile', authenticateToken, (req, res) => {
     });
 });
 
+
+
 // Protected route
 app.get('/protected', authenticateToken, (req, res) => {
     res.status(200).json({ message: 'This is a protected route' });
