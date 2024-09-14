@@ -19,10 +19,11 @@ const port = process.env.PORT || 3000;
 
 // Transporter for sending emails (forgot password feature)
 const transporter = nodemailer.createTransport({
-    service: 'Gmail', // *** IMPORTANT - UPDATE THIS FOR PRODUCTION, USE SECURE SERVICE PROVIDER API
+    host: "sandbox.smtp.mailtrap.io",
+    port: 2525,
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS 
+        pass: process.env.EMAIL_PASS
     }
 });
 
@@ -136,12 +137,22 @@ app.post('/forgot-password', (req, res) => {
                 from: process.env.EMAIL_USER,
                 to: email, 
                 subject: 'Password Reset Request',
-                text: `You requested a password reset. Please click the following link to reset your password: ${resetLink}`
+                html: `
+                <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+                    <h2>Password Reset Request</h2>
+                    <p>You requested a password reset. Please click the link below to reset your password:</p>
+                    <a href="${resetLink}" 
+                       style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                       Reset Password
+                    </a>
+                    <p>If you did not request this, please ignore this email.</p>
+                </div>
+            `            
             };
 
             transporter.sendMail(mailOptions, (err, info) => {
                 if (err) {
-                    return res.status(500).json({ message: 'Error sending email' })
+                    return res.status(500).json({ message: 'Error sending email' });
                 }
                 res.status(200).json({ message: 'Password reset link sent' });
             });
