@@ -9,11 +9,22 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const db = require('./database');
 const { authenticateToken, createToken, hashPassword, comparePassword } = require('./auth');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Transporter for sending emails (forgot password feature)
+const transporter = nodemailer.createTransport({
+    service: 'Gmail', // UPDATE THIS FOR PRODUCTION
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS 
+    }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -68,7 +79,7 @@ app.put('/edit-profile', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
     if (!email && !password) {
-        return res.status(400).json({ message: 'Email or password must be provided to update'});
+        return res.status(400).json({ message: 'Email or password must be provided to update' });
     }
 
     let query = `UPDATE users SET `;
@@ -79,7 +90,7 @@ app.put('/edit-profile', authenticateToken, (req, res) => {
         queryParams.push(email);
     }
 
-    // // Wasn't handling both email and password update correctly, asked ChatGPT.
+    // Wasn't handling both email and password update correctly, asked ChatGPT.
     if (password) {
         if (email) query += `, `; 
         const hashedPassword = hashPassword(password);
@@ -98,6 +109,78 @@ app.put('/edit-profile', authenticateToken, (req, res) => {
     });
 });
 
+// Route to request password reset 
+app.post('/forgot-password', (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required to reset password'});
+    }
+
+    // Generate a unique reset token then store it plus the expiry date in the db
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = Date.now() + 120000; // 20 mins reset time 
+
+    db.run(
+        `UPDATE users SET resetToken = ?, resetTokenExpiry = ? WHERE email = ?`,
+        [resetToken, resetTokenExpiry, email],
+        function (err) {
+            if (err) {
+                return res.status(500).json({ message: 'Error generating reset token' });
+            }
+
+            // Send email with the reset link 
+            const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+            const mailOptions = {
+                from: process.env.EMAIL_USER,
+                to: email, 
+                subject: 'Password Reset Request',
+                text: `You requested a password reset. Please click the following link to reset your password: ${resetLink}`
+            };
+
+            transporter.sendMail(mailOptions, (err, info) => {
+                if (err) {
+                    return res.status(500).json({ message: 'Error sending email' })
+                }
+                res.status(200).json({ message: 'Password reset link sent' });
+            });
+        }
+    );
+});
+
+// Route to reset password 
+app.post('/reset-password', (req, res) => {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+        return res.status(400).json({ message: 'Token and new password are required' });
+    }
+
+    // Check if the token is valid and has not expired
+    db.get(
+        `SELECT * FROM users WHERE resetToken = ? AND resetTokenExpiry > ?`,
+        [token, Date.now()],
+        (err, user) => {
+            if (err || !user) {
+                return res.status(400).json({ message: 'Invalid or expired token' });    
+            }
+
+            // Hash the new password. Then update user's password and clear (NULL) the reset token
+            const hashedPassword = hashPassword(newPassword);
+
+            db.run(
+                `UPDATE users SET password = ?, resetToken = NULL, resetTokenExpiry = NULL WHERE resetToken = ?`,
+                [hashedPassword, token],
+                function (err) {
+                    if (err) {
+                        return res.status(500).json({ message: 'Error resetting password' });
+                    }
+                    res.status(200).json({ message: 'Password reset successfully' });
+                }
+            );
+        }
+    );
+});
 
 // Delete user profile 
 app.delete('/delete-profile', authenticateToken, (req, res) => {
@@ -111,8 +194,6 @@ app.delete('/delete-profile', authenticateToken, (req, res) => {
         res.status(200).json({ message: 'User profile deleted successfully'});
     });
 });
-
-
 
 // Protected route
 app.get('/protected', authenticateToken, (req, res) => {
