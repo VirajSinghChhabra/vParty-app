@@ -61,6 +61,58 @@ app.post('/login', (req, res) => {
     });
 });
 
+// Edit user profile 
+app.put('/edit-profile', authenticateToken, (req, res) => {
+    const { email, password } = req.body;
+    // Get user id from token 
+    const userId = req.user.id;
+
+    if (!email && !password) {
+        return res.status(400).json({ message: 'Email or password must be provided to update'});
+    }
+
+    let query = `UPDATE users SET `;
+    const queryParams = [];
+
+    if (email) {
+        query += `email = ? `;
+        queryParams.push(email);
+    }
+
+    // // Wasn't handling both email and password update correctly, asked ChatGPT.
+    if (password) {
+        if (email) query += `, `; 
+        const hashedPassword = hashPassword(password);
+        query += `password = ? `;
+        queryParams.push(hashedPassword);
+    }
+
+    query += `WHERE id = ?`;
+    queryParams.push(userId)
+
+    db.run(query, queryParams, function (err) {
+        if (err) {
+            return res.status(500).json({ message: 'Error updating profile' });
+        }
+        res.status(200).json({ message: 'Profile updated successfully' });
+    });
+});
+
+
+// Delete user profile 
+app.delete('/delete-profile', authenticateToken, (req, res) => {
+    // Get user id from token 
+    const userId = req.user.id;
+
+    db.run(`DELETE FROM users WHERE id = ?`, [userId], function (err) {
+        if (err) {
+            return res.status(500).json({ message: 'Error deleting profile'});
+        }
+        res.status(200).json({ message: 'User profile deleted successfully'});
+    });
+});
+
+// Protected route
 app.get('/protected', authenticateToken, (req, res) => {
     res.status(200).json({ message: 'This is a protected route' });
 });
