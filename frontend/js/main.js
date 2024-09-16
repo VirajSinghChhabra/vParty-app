@@ -83,10 +83,17 @@ async function handleEditProfile(event) {
     const form = document.getElementById('editProfileForm');
     const email = form.email.value;
     const password = form.password.value;
+    const confirmPassword = form['confirm-password'].value;
     const token = localStorage.getItem('token');
     
     // Empty object to store updates
     let updateData = {};
+
+    // Confirm password validation
+    if (password && password !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+    }
 
     // Only add fields that are not empty
     if (email) updateData.email = email;
