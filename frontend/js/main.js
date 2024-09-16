@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('editProfileForm').addEventListener('submit', handleEditProfile);
     document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
     document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
+    document.getElementById('delete-profile-btn').addEventListener('click', handleDeleteProfile); 
 });
 
 // Handle User Registration
@@ -77,48 +78,21 @@ async function handleLogin(event) {
 // Login/Logout, Edit Profile > option to Change Email or Change Password, Delete Profile
 // But this will probably require a complete redo of html file into templates/Jinja.
 async function handleEditProfile(event) {
-    event.preventDefault();
-    const form = event.target;
+    event.preventDefault(); // Prevent form submission
+    
+    const form = document.getElementById('editProfileForm');
     const email = form.email.value;
     const password = form.password.value;
-    const isDeleteProfile = form.dataset.action === 'delete';
     const token = localStorage.getItem('token');
-
-    if (isDeleteProfile) {
-        // Handle delete profile
-        if (confirm('Are you sure you want to delete your profile? This action cannot be undone.')) {
-            try {
-                const response = await fetch('/delete-profile', {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    alert('Profile deleted successfully');
-                    window.location.href = 'index.html';
-                    // *** IMPORTANT *** Redirect to index.html or if you make new homepage file
-                } else {
-                    const data = await response.json();
-                    alert(`Error: ${data.message}`);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred');
-            }
-        }
-        return; 
-    }
-
-    // Empty object to store updates 
+    
+    // Empty object to store updates
     let updateData = {};
 
-    // Way to only add fields that are not empty
+    // Only add fields that are not empty
     if (email) updateData.email = email;
     if (password) updateData.password = password;
 
+    // Check if at least one field is filled
     if (!email && !password) {
         alert('Please fill out at least one field to update');
         return;
@@ -142,10 +116,38 @@ async function handleEditProfile(event) {
             alert(`Error: ${data.message}`);
         }
     } catch (error) {
-        console.error('Error: ', error);
-        alert('An error occured');
+        console.error('Error:', error);
+        alert('An error occurred');
     }
-}   
+}
+
+// Handle Delete Profile
+async function handleDeleteProfile() {
+    const token = localStorage.getItem('token');
+
+    if (confirm('Are you sure you want to delete your profile? This action cannot be undone.')) {
+        try {
+            const response = await fetch('/delete-profile', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                alert('Profile deleted successfully');
+                window.location.href = 'index.html'; // Redirect to homepage after deletion
+            } else {
+                const data = await response.json();
+                alert(`Error: ${data.message}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred');
+        }
+    }
+}
 
 // Handle Forgot Password 
 async function handleForgotPassword(event) {
