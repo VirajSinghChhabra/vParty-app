@@ -90,7 +90,7 @@ async function handleEditProfile(event) {
     let updateData = {};
 
     // Confirm password validation
-    if (password && password !== confirmPassword) {
+    if (password !== confirmPassword) {
         alert('Passwords do not match');
         return;
     }
