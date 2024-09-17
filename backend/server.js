@@ -11,6 +11,7 @@ const db = require('./database');
 const { authenticateToken, createToken, hashPassword, comparePassword } = require('./auth');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const path = require('path');
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ const transporter = nodemailer.createTransport({
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('../frontend'));
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 
 // Register route 
@@ -156,7 +157,7 @@ app.post('/forgot-password', (req, res) => {
                 if (err) {
                     return res.status(500).json({ message: 'Error sending email' });
                 }
-                res.status(200).json({ message: 'Password reset link sent' });
+                res.status(200).json({ message: 'Password reset link sent to email' });
             });
         }
     );
