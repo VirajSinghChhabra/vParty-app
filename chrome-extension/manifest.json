@@ -1,21 +1,29 @@
 {
-    "mainfest_version": 3,
+    "manifest_version": 3,
     "name": "vParty Extension",
     "version": "1.0",
-    "description": "A Chrome extension for synchronized Netflix viewing with friends.",
-    "action": {
-        "default_popup": "popup.html",
-        "default_icon": "icon.png"
-    },
-    "permissions": ["tabs", "storage"],
+    "description": "Syncs video playback and chat for a better watch party experience.",
+    "permissions": ["storage", "identity"],
     "background": {
         "service_worker": "background.js"
     },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "assets/icon16.png",
+            "48": "assets/icon48.png",
+            "128": "assets/icon128.png"
+        }
+    },
+    "icons": {
+        "16": "assets/icon16.png",
+        "48": "assets/icon48.png",
+        "128": "assets/icon128.png"
+    },
     "content_scripts": [
         {
-            "matches": ["https://*.netflix.com/*"],
+            "matches": ["*://*.netflix.com/*"],
             "js": ["content.js"]
         }
-    ],
-    "host_permissions": ["https://*.netflix.com/*"]
+    ]
 }
