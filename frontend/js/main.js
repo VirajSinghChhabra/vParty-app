@@ -10,9 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
 // Handle User Registration
 async function handleRegister(event) {
     event.preventDefault();
-    const form = form.target;
+    const form = event.target;
     const email = form.email.value;
-    const password = form.passord.value;
+    const password = form.password.value;
     const confirmPassword = form.confirmPassword.value;
 
     if (password !== confirmPassword) {
@@ -46,7 +46,7 @@ async function handleLogin(event) {
     event.preventDefault();
     const form = event.target;
     const email = form.email.value;
-    const password = form.passord.value;
+    const password = form.password.value;
 
     try {
         const response = await fetch('/login', {

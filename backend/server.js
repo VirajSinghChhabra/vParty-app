@@ -29,6 +29,8 @@ const transporter = nodemailer.createTransport({
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static('../frontend'));
+
 
 // Register route 
 app.post('/register', (req,res) => {
