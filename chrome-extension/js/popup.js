@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         userInfo.classList.remove('d-none');
     }    
 
-    // Video selection logic 
+    // Video selection logic
 
     // Redirect button
     redirectBtn.addEventListener('click', function() {
