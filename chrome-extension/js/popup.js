@@ -50,6 +50,32 @@ document.addEventListener('DOMContentLoaded', function() {
     // Video selection logic 
 
     // Redirect button
+    redirectBtn.addEventListener('click', function() {
+        chrome.tabs.create({ url: 'https://netflix.com' });
+    });
 
-    // Copy link button 
+    // Function for copy to clipboard button
+    function copyToClipboard() {
+        const inviteLink = document.getElementById('invite-link').value;
+
+        if (!inviteLink) {
+            console.error('No text to copy');
+            return;
+        }
+
+        // Clipboard API
+        navigator.clipboard.writeText(inviteLink)
+            .then(() => {
+                console.log('Text successfully copied to clipboard');
+                alert('Invite link copied to clipboard!');
+            })
+            .catch(err => {
+                console.error('Failed to copy text', err);
+                alert('Failed to copy invite link');
+            });
+    }
+
+    // Event listener for the copy button
+    document.getElementById('copy-link-btn').addEventListener('click', copyToCLipboard);
+
 });
