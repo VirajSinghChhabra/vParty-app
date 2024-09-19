@@ -48,12 +48,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }    
 
     // Video selection logic
+    // Function to handle messages from content.js (whether a video is playing)
+    chrome.runtime.onMessage.addEventListener((message, sender, sendResponse) => {
+        const startPartyBtn = document.getElementById('start-party-btn');
+        const selectVideoMsg = document.getElementById('select-video-msg');
+
+        if (message.videoPlaying) {
+            // Enable "Start Watch Party" button if a video is playinh
+            startPartyBtn.disabled = false;
+            startPartyBtn.classList.remove('btn-secondary');
+            startPartyBtn.classList.add('btn-primary');
+            selectVideoMsg.classList.add('d-none');
+        } else {
+            // Disable the button if no video is playing
+            startPartyBtn.disabled = true;
+            startPartyBtn.classList.remove('btn-primary');
+            startPartyBtn.classList.add('btn-secondary');
+            selectVideoMsg.classList.remove('d-none');
+        }
+    });
 
     // Redirect button
     redirectBtn.addEventListener('click', function() {
         chrome.tabs.create({ url: 'https://netflix.com' });
     });
 
+    // Copy button logi 
     // Function for copy to clipboard button
     function copyToClipboard() {
         const inviteLink = document.getElementById('invite-link').value;
