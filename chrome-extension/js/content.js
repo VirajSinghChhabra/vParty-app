@@ -39,6 +39,18 @@
         }
     }
 
+    // Extract session ID from the url
+    function getSessionIDFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('sessionID');
+    }
+
+    // Send sessionID to background script or popup for syncing 
+    const sessionID = getSessionIDFromURL();
+    if (sessionID) {
+        chrome.runtime.sendMessage({ sessionID: sessionID });
+    }
+
     // Listen for messages from popup.js
     chrome.runtime.onMessage.Listener((message, sender, sendResponse) => {
         if (message.action === 'startParty') {

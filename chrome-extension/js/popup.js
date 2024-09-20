@@ -54,6 +54,12 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: 'https://netflix.com' });
     });
 
+    // Function to generate a unique session ID
+    // ChatGPT code for this function
+    function generateSessionID() {
+        return '_' + Math.random().toString(36).substring(2,9);
+    }
+
     // Copy button logic
     // Function for copy to clipboard button
     function copyToClipboard() {
@@ -130,11 +136,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 if (response && response.videoId) {
-                    const inviteLink = `https://vparty.com/join?videoId=${response.videoId}`;
-                    inviteLinkInput.value = inviteLink;
+                    // ChatGPT help for generating and displaying invite link
+                    const sessionID = generateSessionID();
+                    localStorage.setItem('sessionID', sessionID);
+                    const inviteLink = `https://netflix.com/watch?sessionID=${sessionID}&videoId=${response.videoId}`;                    inviteLinkInput.value = inviteLink;
                     document.getElementById('invite-section').classList.remove('d-none');
                     disconnectBtn.classic.remove('d-none');
                 } else {
+                    console.error('No video found');
                     alert('No video found. Please select a video and try again.');
                 }
             });
