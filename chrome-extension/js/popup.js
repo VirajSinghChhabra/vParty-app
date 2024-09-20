@@ -80,6 +80,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener for the copy button
     copyLinkBtn.addEventListener('click', copyToClipboard);
 
+    // Open Sidebar toggle button
+    document.getElementById('open-sidebar-btn').addEventListener('click', () => {
+        // Send a message to the content script to open the sidebar
+        chrome.runtime.sendMessage({ action: 'toggleSidebar', open: true });
+    });
+
     // Video selection logic
     // Handle messages from content.js (whether a video is playing)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -90,11 +96,17 @@ document.addEventListener('DOMContentLoaded', function() {
             startPartyBtn.disabled = false;
             startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
             selectVideoMsg.classList.add('d-none');
+
+            // Show the Open Chat Sidebar button
+            document.getElementById('open-sidebar-btn').classList.remove('d-none');
         } else {
             // Disable the button if no video is playing
             startPartyBtn.disabled = true;
             startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
             selectVideoMsg.classList.remove('d-none');
+            
+            // Hide the Open Chat Sidebar button
+            document.getElementById('open-sidebar-btn').classList.add('d-none');
         }
     });
 

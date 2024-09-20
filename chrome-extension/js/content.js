@@ -40,11 +40,19 @@
     }
 
     // Listen for messages from popup.js
-    chrome.runtime.onMessage.addEventListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.Listener((message, sender, sendResponse) => {
         if (message.action === 'startParty') {
             sendResponse({ videoId: currentVideoId });
         } else if (message.action === 'disconnectParty') {
             sendResponse ({ success: true });
+        }
+
+        if (message.action === 'toggleSidebar') {
+            // Logic to open the chat sidebar
+            if (message.open) {
+                // Code to open the sidebar
+                document.getElementById('chat-sidebar').style.display = 'block';
+            }
         }
     });
 
