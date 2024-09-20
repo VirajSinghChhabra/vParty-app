@@ -68,6 +68,24 @@
         }
     });
 
+    // Listen for video events 
+    const videoPlayer = document.querySelector('video');
+
+    if (videoPlayer) {
+        videoPlayer.addEventListener('play', () => {
+            chrome.runtime.sendMessage({ action: 'videoAction', type: 'play' });
+        });
+
+        videoPlayer.addEventListener('pause', () => {
+            chrome.runtime.sendMessage({ action: 'videoAction', type: 'pause'});
+        });
+
+        videoPlayer.addEventListener('seeked', () => {
+            const currentTime = videoPlayer.currentTime;
+            chrome.runtime.sendMessage({ action: 'videoAction', type: 'seek'});
+        });
+    }
+
     // Run the check when the page is loaded and everytime a video is played/paused
     window.onload = checkIfVideoIsPlaying;
     document.addEventListener('play', checkIfVideoIsPlaying, true);
