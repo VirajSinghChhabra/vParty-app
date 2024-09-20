@@ -82,7 +82,7 @@
 
         videoPlayer.addEventListener('seeked', () => {
             const currentTime = videoPlayer.currentTime;
-            chrome.runtime.sendMessage({ action: 'videoAction', type: 'seek'});
+            chrome.runtime.sendMessage({ action: 'videoAction', type: 'seek', time: currentTime });
         });
     }
 
