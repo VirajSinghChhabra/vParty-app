@@ -4,3 +4,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.runtime.sendMessage(message);
     }
 });
+
+chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message.action === 'videoAction') {
+        // Broadcast to all connected tabs
+        chrome.tabs.query({}, (tabs) => {
+            tabs.forEach((tab) => {
+                chrome.tabs.sendMessage(tab.id, message);
+            });
+        });
+    }
+});

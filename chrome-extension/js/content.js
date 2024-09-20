@@ -86,6 +86,20 @@
         });
     }
 
+    // Listen for incoming video action messages from users to control the video player on other user devices
+    chrome.runtime.onMessage.addListener((message) => {
+        const videoPlayer = document.querySelector('video');
+        if (videoPlayer) {
+            if (message.type === 'play') {
+                videoPlayer.play();
+            } else if (message.type === 'pause') {
+                videoPlayer.pause();
+            } else if (message.type === 'seek') {
+                videoPlayer.currentTime = message.time;
+            }
+        }
+    });
+
     // Run the check when the page is loaded and everytime a video is played/paused
     window.onload = checkIfVideoIsPlaying;
     document.addEventListener('play', checkIfVideoIsPlaying, true);
