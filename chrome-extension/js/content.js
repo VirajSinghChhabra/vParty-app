@@ -10,7 +10,7 @@
     // FUnction to get the current video ID 
     function getVideoId() {
         const url = window.location.href;
-        const match = url.match(/\/watch\/(\d+)/);
+        const match = url.match(/watch\/(\d+)/);
         return match ? match[1] : null;
     }
 
@@ -30,7 +30,7 @@
     function checkVideoStatus() {
         if (detectVideo()) {
             const videoId = getVideoId();
-            if (videoId != currentVideoId) {
+            if (videoId !== currentVideoId) {
                 currentVideoId = videoId;
                 chrome.runtime.sendMessage({ videoPlaying: true, videoId });
             }
@@ -69,27 +69,29 @@
     });
 
     // Listen for video events 
-    const videoPlayer = document.querySelector('video');
+    function setupVideoListeners() {
+        const videoPlayer = document.querySelector('video');
 
-    if (videoPlayer) {
-        videoPlayer.addEventListener('play', () => {
-            chrome.runtime.sendMessage({ action: 'videoAction', type: 'play' });
-            // *** FOR TESTING
-            console.log('Sent play action');
-        });
+        if (videoPlayer) {
+            videoPlayer.addEventListener('play', () => {
+                chrome.runtime.sendMessage({ action: 'videoAction', type: 'play' });
+                // *** FOR TESTING
+                console.log('Sent play action');
+            });
 
-        videoPlayer.addEventListener('pause', () => {
-            chrome.runtime.sendMessage({ action: 'videoAction', type: 'pause'});
-            // *** FOR TESTING
-            console.log('Sent pause action');
-        });
+            videoPlayer.addEventListener('pause', () => {
+                chrome.runtime.sendMessage({ action: 'videoAction', type: 'pause'});
+                // *** FOR TESTING
+                console.log('Sent pause action');
+            });
 
-        videoPlayer.addEventListener('seeked', () => {
-            const currentTime = videoPlayer.currentTime;
-            chrome.runtime.sendMessage({ action: 'videoAction', type: 'seek', time: currentTime });
-            // *** FOR TESTING
-            console.log('Sent seek action');
-        });
+            videoPlayer.addEventListener('seeked', () => {
+                const currentTime = videoPlayer.currentTime;
+                chrome.runtime.sendMessage({ action: 'videoAction', type: 'seek', time: currentTime });
+                // *** FOR TESTING
+                console.log('Sent seek action');
+            });
+        }
     }
 
     // Listen for incoming video action messages from users to control the video player on other user devices
@@ -107,10 +109,10 @@
     });
 
     // Run the check when the page is loaded and everytime a video is played/paused
-    window.onload = checkIfVideoIsPlaying;
-    document.addEventListener('play', checkIfVideoIsPlaying, true);
-    document.addEventListener('pause', checkIfVideoIsPlaying, true)
-    document.addEventListener('ended', checkIfVideoIsPlaying, true)
+    window.addEventListener('load', () => {
+        checkIfVideoIsPlaying();
+        setupVideoListeners();
+    });
 
     // Poll every second to check video status
     setInterval(checkVideoStatus, 1000);

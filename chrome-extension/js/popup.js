@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const redirectBtn = document.getElementById('redirect-btn');
     const disconnectBtn = document.getElementById('disconnect-btn');
     const logoutBtn = document.getElementById('logout-btn');
+    const selectVideoMsg = document.getElementById('select-video-msg');
 
     // Function to check if user is logged in. Check local storage for token. (so only users logged in can start a party)
     function checkLoginStatus() {
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isLoggedIn) {
         userInfo.classList.remove('d-none');
         notLoggedIn.classList.add('d-none');
-        
+
         //Extract and display user info from the token (to be shown in header)
         const token = localStorage.getItem('token');
         const user = parseJWT(token);
@@ -46,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     } else {
         userInfo.classList.add('d-none');
-        userInfo.classList.remove('d-none');
+        notLoggedIn.classList.remove('d-none');
     }    
 
     startPartyBtn.disabled = false; // Enable button for testing
@@ -98,24 +99,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Video selection logic
     // Handle messages from content.js (whether a video is playing)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        const selectVideoMsg = document.getElementById('select-video-msg');
+        if (message.videoPlaying !== undefined) {
+            if (message.videoPlaying) {
+                // Enable "Start Watch Party" button if a video is playinh
+                startPartyBtn.disabled = false;
+                startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
+                selectVideoMsg.classList.add('d-none');
 
-        if (message.videoPlaying) {
-            // Enable "Start Watch Party" button if a video is playinh
-            startPartyBtn.disabled = false;
-            startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
-            selectVideoMsg.classList.add('d-none');
-
-            // Show the Open Chat Sidebar button
-            document.getElementById('open-sidebar-btn').classList.remove('d-none');
-        } else {
-            // Disable the button if no video is playing
-            startPartyBtn.disabled = true;
-            startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
-            selectVideoMsg.classList.remove('d-none');
-            
-            // Hide the Open Chat Sidebar button
-            document.getElementById('open-sidebar-btn').classList.add('d-none');
+                // Show the Open Chat Sidebar button
+                document.getElementById('open-sidebar-btn').classList.remove('d-none');
+            } else {
+                // Disable the button if no video is playing
+                startPartyBtn.disabled = true;
+                startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
+                selectVideoMsg.classList.remove('d-none');
+                
+                // Hide the Open Chat Sidebar button
+                document.getElementById('open-sidebar-btn').classList.add('d-none');
+            }
         }
     });
 
@@ -143,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const sessionID = generateSessionID();
                     localStorage.setItem('sessionID', sessionID);
                     const inviteLink = `https://netflix.com/watch?sessionID=${sessionID}&videoId=${response.videoId}`;                    inviteLinkInput.value = inviteLink;
+                    inviteLinkInput.value = inviteLink;
                     document.getElementById('invite-section').classList.remove('d-none');
                     disconnectBtn.classic.remove('d-none');
                 } else {
