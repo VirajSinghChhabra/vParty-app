@@ -52,7 +52,7 @@
     }
 
     // Listen for messages from popup.js
-    chrome.runtime.onMessage.Listener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'startParty') {
             sendResponse({ videoId: currentVideoId });
         } else if (message.action === 'disconnectParty') {
