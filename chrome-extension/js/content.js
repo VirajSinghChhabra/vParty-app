@@ -28,25 +28,22 @@
 
     // Check video status and send video ID if playong 
     function checkVideoStatus() {
-        function checkVideoStatus() {
-            try {
-                if (detectVideo()) {
-                    const videoId = getVideoId();
-                    if (videoId !== currentVideoId) {
-                        currentVideoId = videoId;
-                        // Check if the extension context is valid before sending a message
-                        if (chrome.runtime && chrome.runtime.sendMessage) {
-                            chrome.runtime.sendMessage({ videoPlaying: true, videoId });
-                        }
+        try {
+            if (detectVideo()) {
+                const videoId = getVideoId();
+                if (videoId !== currentVideoId) {
+                    currentVideoId = videoId;
+                    // Check if the extension context is valid before sending a message
+                    if (chrome.runtime && chrome.runtime.sendMessage) {
+                        chrome.runtime.sendMessage({ videoPlaying: true, videoId });
                     }
-                } else {
-                    chrome.runtime.sendMessage({ videoPlaying: false });
                 }
-            } catch (error) {
-                console.error("Error in checkVideoStatus:", error);
+            } else {
+                chrome.runtime.sendMessage({ videoPlaying: false });
             }
+        } catch (error) {
+            console.error("Error in checkVideoStatus:", error);
         }
-        
     }
 
     // Extract session ID from the url
