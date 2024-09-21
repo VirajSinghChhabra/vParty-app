@@ -5,7 +5,8 @@
     "description": "Syncs video playback and chat for a better watch party experience.",
     "permissions": [
         "tabs", 
-        "storage"
+        "activeTab",
+        "storage",
     ],
     "background": {
         "service_worker": "js/background.js"
