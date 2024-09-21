@@ -74,15 +74,21 @@
     if (videoPlayer) {
         videoPlayer.addEventListener('play', () => {
             chrome.runtime.sendMessage({ action: 'videoAction', type: 'play' });
+            // *** FOR TESTING
+            console.log('Sent play action');
         });
 
         videoPlayer.addEventListener('pause', () => {
             chrome.runtime.sendMessage({ action: 'videoAction', type: 'pause'});
+            // *** FOR TESTING
+            console.log('Sent pause action');
         });
 
         videoPlayer.addEventListener('seeked', () => {
             const currentTime = videoPlayer.currentTime;
             chrome.runtime.sendMessage({ action: 'videoAction', type: 'seek', time: currentTime });
+            // *** FOR TESTING
+            console.log('Sent seek action');
         });
     }
 
