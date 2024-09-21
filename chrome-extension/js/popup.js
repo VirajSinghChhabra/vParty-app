@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to parse JWT and extract user info for displaying in header of the popup
-    function parseJwt(token) {
+    function parseJWT(token) {
         try {
             const base64Url = token.split('.')[1];
             const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');

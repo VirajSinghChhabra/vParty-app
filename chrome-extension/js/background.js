@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Handle video actions
     if (message.action === 'videoAction') {
         // Broadcast to all connected tabs except the sender tab
-        chrome.tabs.query({}, (tabs) => {
+        chrome.tabs.query({ url: "*://www.netflix.com/*" }, (tabs) => {
             tabs.forEach((tab) => {
                 if (tab.id !== sender.tab.id) {
                     chrome.tabs.sendMessage(tab.id, message);
