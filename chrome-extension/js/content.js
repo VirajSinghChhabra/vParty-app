@@ -70,8 +70,8 @@
             case 'disconnectParty':
                 sendResponse({ success: true });
                 break;
-            case 'toggleSidebar':
-                    document.getElementById('chat-sidebar').style.display = 'block';
+            //case 'toggleSidebar':
+            //        document.getElementById('chat-sidebar').style.display = 'block';
         }
     });
 

@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const inviteLink = `https://netflix.com/watch?sessionID=${sessionID}&videoId=${response.videoId}`;                    inviteLinkInput.value = inviteLink;
                     inviteLinkInput.value = inviteLink;
                     document.getElementById('invite-section').classList.remove('d-none');
-                    disconnectBtn.classic.remove('d-none');
+                    disconnectBtn.classList.remove('d-none');
                 } else {
                     console.error('No video found');
                     alert('No video found. Please select a video and try again.');
