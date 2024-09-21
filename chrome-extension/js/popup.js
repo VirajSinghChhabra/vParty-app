@@ -9,10 +9,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const logoutBtn = document.getElementById('logout-btn');
 
     // Function to check if user is logged in. Check local storage for token. (so only users logged in can start a party)
-    // *** ONLY FOR TESTING *** // function checkLoginStatus() {
-    //  const token = localStorage.getItem('token');
-    //     return token !== null;
-    // }
+    function checkLoginStatus() {
+        const token = localStorage.getItem('token');
+        return token !== null;
+    }
 
     // Function to parse JWT and extract user info for displaying in header of the popup
     function parseJwt(token) {
@@ -31,23 +31,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Check if the user is logged in 
-    // *** ONLY FOR TESTING *** // const isLoggedIn = checkLoginStatus();
+    const isLoggedIn = checkLoginStatus();
 
-    // if (isLoggedIn) {
-    //    userInfo.classList.remove('d-none');
-    //    notLoggedIn.classList.add('d-none');
-    //
-    //    // Extract and display user info from the token (to be shown in header)
-    //    const token = localStorage.getItem('token');
-    //    const user = parseJWT(token);
-    //    if (user) {
-    //        document.getElementById('username').textContent = user.name || 'User';
-    //        document.getElementById('email').textContent = user.email || 'user@example.com'; 
-    //    }
-    //} else {
-    //    userInfo.classList.add('d-none');
-    //    userInfo.classList.remove('d-none');
-    //}    
+    if (isLoggedIn) {
+        userInfo.classList.remove('d-none');
+        notLoggedIn.classList.add('d-none');
+        
+        //Extract and display user info from the token (to be shown in header)
+        const token = localStorage.getItem('token');
+        const user = parseJWT(token);
+        if (user) {
+            document.getElementById('username').textContent = user.name || 'User';
+            document.getElementById('email').textContent = user.email || 'user@example.com'; 
+        }
+    } else {
+        userInfo.classList.add('d-none');
+        userInfo.classList.remove('d-none');
+    }    
 
     startPartyBtn.disabled = false; // Enable button for testing
     startPartyBtn.classList.replace('btn-secondary', 'btn-primary'); // Change the button syle
