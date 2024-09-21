@@ -122,12 +122,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start Watch party button click event
     startPartyBtn.addEventListener('click', async () => {
         // Check if user is logged in (so only users logged in can join party)
-        const token = localStorage.getItem('token');
-        // *** ONLY FOR TESTING *** // if (!token) {
-        // *** ONLY FOR TESTING *** //     console.error('User needs to be logged in to join a watch party');
-        // *** ONLY FOR TESTING *** //     alert('You must be logged in to start a watch party.');
-        // *** ONLY FOR TESTING *** //     return;
-        // *** ONLY FOR TESTING *** // }
+        // const token = localStorage.getItem('token');
+        // if (!token) {
+        //     console.error('User needs to be logged in to join a watch party');
+        //     alert('You must be logged in to start a watch party.');
+        //     return;
+        // }
 
         // If logged in, start the watch party 
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
