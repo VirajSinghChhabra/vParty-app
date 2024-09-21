@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to check if user is logged in. Check local storage for token. (so only users logged in can start a party)
     function checkLoginStatus() {
-        const token = localStorage.getItem('token');
+        // *** ONLY FOR TESTING *** // const token = localStorage.getItem('token');
         return token !== null;
     }
 
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
         notLoggedIn.classList.add('d-none');
 
         // Extract and display user info from the token (to be shown in header)
-        const token = localStorage.getItem('token');
+        // *** ONLY FOR TESTING *** // const token = localStorage.getItem('token');
         const user = parseJWT(token);
         if (user) {
             document.getElementById('username').textContent = user.name || 'User';
@@ -120,11 +120,11 @@ document.addEventListener('DOMContentLoaded', function() {
     startPartyBtn.addEventListener('click', async () => {
         // Check if user is logged in (so only users logged in can join party)
         const token = localStorage.getItem('token');
-        if (!token) {
-            console.error('User needs to be logged in to join a watch party');
-            alert('You must be logged in to start a watch party.');
-            return;
-        }
+        // *** ONLY FOR TESTING *** // if (!token) {
+        // *** ONLY FOR TESTING *** //     console.error('User needs to be logged in to join a watch party');
+        // *** ONLY FOR TESTING *** //     alert('You must be logged in to start a watch party.');
+        // *** ONLY FOR TESTING *** //     return;
+        // *** ONLY FOR TESTING *** // }
 
         // If logged in, start the watch party 
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
