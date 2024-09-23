@@ -33,7 +33,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(express.urlencoded({ extended: true }));
 
-// Register route 
+// Register route GET method
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/register.html'));
+});
+
+// Register route POST method
 app.post('/register', (req,res) => {
     const { email, password } = req.body;
 
@@ -57,7 +62,12 @@ app.post('/register', (req,res) => {
     );
 });
 
-// Login route 
+// Login route GET method
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/login.html'));
+});
+
+// Login route POST method
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
