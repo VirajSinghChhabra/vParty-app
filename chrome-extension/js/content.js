@@ -58,6 +58,7 @@
         chrome.runtime.sendMessage({ sessionID: sessionID });
     }
 
+    // Added to listen for incoming actions listeners
     // Listen for messages from popup.js
     // chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     //     switch (message.action) {
@@ -130,5 +131,5 @@
     });
 
     // Poll every second to check video status
-    // setInterval(checkVideoStatus, 1000);
+    setInterval(checkVideoStatus, 1000);
 })();

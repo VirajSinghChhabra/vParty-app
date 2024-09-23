@@ -19,11 +19,11 @@
 
         <!-- Not logged in view -->
         <div id="not-logged-in">
-            <p>Start watching now with vParty</p>
-            <div class="d-grid gap-2">
-                <a href="http://localhost:3000/register.html" class="btn btn-primary">Create an Account</a>
-                <a href="http://localhost:3000/login.html" class="btn btn-secondary">Login</a>
-            </div>
+            <p>Please log in to start watching with vParty</p>
+            <div class="btn-group-vertical" role="group" aria-label="Vertical button group">
+                <button type="button" id="create-account-btn" class="btn btn-primary">Create an Account</button>
+                <button type="button" id="login-btn" class="btn btn-primary">Login</button>
+              </div>
         </div>
 
         <!-- Logged in view (hidden by default) -->
@@ -43,14 +43,14 @@
 
             <!-- Netflix redirection button, if not on Netflix -->
             <div id="go-to-netflix" class="d-grid gap-2 mb-3">
-                <button class="btn btn-warning" id="redirect-btn">Go to Netflix</button>
+                <button class="btn btn-primary" id="redirect-btn">Go to Netflix</button>
             </div>
 
-            <!-- Start Watch Party button (locked/greyed until video selected) -->
+            <!-- Start Watch Party button (locked until video selected) -->
             <div id="party-section" class="text-center">
-                <p id="select-video-msg" class="text-muted">Please select a video.</p>
                 <button id="start-party-btn" class="btn btn-secondary" disabled>Start Watch Party</button>
-                <button id="open-sidebar-btn" class="btn btn-info d-none">Open Chat Sidebar</button>
+                <p id="select-video-msg" class="text-muted d-none">Please select a video.</p>
+                <button id="toggle-sidebar-btn" class="btn btn-info d-none">Open Chat Sidebar</button>
             </div>
 
             <!-- Disconnect from Party button -->

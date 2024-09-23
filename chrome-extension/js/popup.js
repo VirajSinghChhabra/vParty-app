@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+
+    const createAccBtn = document.getElementById('create-account-btn');
+    const loginBtn = document.getElementById('login-btn');
     const userInfo = document.getElementById('logged-in');
     const notLoggedIn = document.getElementById('not-logged-in');
     const startPartyBtn = document.getElementById('start-party-btn');
@@ -8,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const disconnectBtn = document.getElementById('disconnect-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const selectVideoMsg = document.getElementById('select-video-msg');
+    const ToggleSidebarBtn = document.getElementById('toggle-sidebar');
 
     // Function to check if user is logged in. Check local storage for token. (so only users logged in can start a party)
     function checkLoginStatus() {
@@ -48,14 +52,18 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         userInfo.classList.add('d-none');
         notLoggedIn.classList.remove('d-none');
-    }    
+    }   
 
-    // Redirect button
-    // Redirect button
-    redirectBtn.addEventListener('click', function() {
-        chrome.runtime.sendMessage({ action: "redirectToNetflix" });
+    // Not logged in view
+    // Create Account button event
+    createAccBtn.addEventListener('click', function() {
+        chrome.tabs.create({ url: 'http://localhost:3000/register.html' });
     });
 
+    // Login button event
+    loginBtn.addEventListener('click', function() {
+        chrome.tabs.create({ url: 'http://localhost:3000/login.html' });
+    });
 
     // Function to generate a unique session ID
     // ChatGPT code for this function
@@ -89,11 +97,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener for the copy button
     copyLinkBtn.addEventListener('click', copyToClipboard);
 
-    // Open Sidebar toggle button
-    document.getElementById('open-sidebar-btn').addEventListener('click', () => {
-        // Send a message to the content script to open the sidebar
-        chrome.runtime.sendMessage({ action: 'toggleSidebar', open: true });
+    // Redirect button
+    redirectBtn.addEventListener('click', function() {
+        chrome.runtime.sendMessage({ action: "redirectToNetflix" });
     });
+
 
     // Video selection logic
     // Handle messages from content.js (whether a video is playing)
@@ -104,17 +112,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 startPartyBtn.disabled = false;
                 startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
                 selectVideoMsg.classList.add('d-none');
-
-                // Show the Open Chat Sidebar button
-                document.getElementById('open-sidebar-btn').classList.remove('d-none');
             } else {
                 // Disable the button if no video is playing
                 startPartyBtn.disabled = true;
                 startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
                 selectVideoMsg.classList.remove('d-none');
-                
-                // Hide the Open Chat Sidebar button
-                document.getElementById('open-sidebar-btn').classList.add('d-none');
             }
         }
     });

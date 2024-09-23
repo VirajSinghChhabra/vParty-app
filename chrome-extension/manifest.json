@@ -16,12 +16,11 @@
     },
     "content_scripts": [
         {
-            "matches": ["*://*.netflix.com/*"],
+            "matches": ["<all_urls"],
             "js": ["js/content.js"]
         }
     ],
     "host_permissions": [
-        "https://*.netflix.com/*",
-    "<all_urls>"
+        "<all_urls>"
     ]
 }
