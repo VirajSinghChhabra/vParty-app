@@ -57,12 +57,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Not logged in view
     // Create Account button event
     createAccBtn.addEventListener('click', function() {
-        chrome.tabs.create({ url: 'http://localhost:3000/register.html' });
+        chrome.tabs.create({ url: 'http://localhost:3000/register' });
     });
 
     // Login button event
     loginBtn.addEventListener('click', function() {
-        chrome.tabs.create({ url: 'http://localhost:3000/login.html' });
+        chrome.tabs.create({ url: 'http://localhost:3000/login' });
     });
 
     // Function to generate a unique session ID
