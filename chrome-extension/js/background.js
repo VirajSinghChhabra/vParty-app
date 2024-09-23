@@ -18,5 +18,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
     }
 
+    // Redirection logic 
+    if (message.action === "redirectToNetflix") {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const activeTab = tabs[0];
+            // Redirect to Netflix if not already on it
+            if (!activeTab.url.includes("netflix.com")) {
+                chrome.tabs.update(activeTab.id, { url: "https://www.netflix.com" });
+            }
+        });
+        sendResponse({ success: true });
+    }
+
     return true;
 });

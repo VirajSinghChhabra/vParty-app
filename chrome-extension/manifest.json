@@ -20,5 +20,8 @@
             "js": ["js/content.js"]
         }
     ],
-    "host_permissions": ["https://*.netflix.com/*"]
+    "host_permissions": [
+        "https://*.netflix.com/*",
+    "<all_urls>"
+    ]
 }

@@ -51,9 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }    
 
     // Redirect button
+    // Redirect button
     redirectBtn.addEventListener('click', function() {
-        chrome.tabs.create({ url: 'https://netflix.com' });
+        chrome.runtime.sendMessage({ action: "redirectToNetflix" });
     });
+
 
     // Function to generate a unique session ID
     // ChatGPT code for this function
