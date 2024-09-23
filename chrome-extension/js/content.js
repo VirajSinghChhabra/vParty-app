@@ -59,18 +59,18 @@
     }
 
     // Listen for messages from popup.js
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        switch (message.action) {
-            case 'startParty':
-                sendResponse({ videoId: currentVideoId });
-                break;
-            case 'disconnectParty':
-                sendResponse({ success: true });
-                break;
-            //case 'toggleSidebar':
-            //        document.getElementById('chat-sidebar').style.display = 'block';
-        }
-    });
+    // chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    //     switch (message.action) {
+    //         case 'startParty':
+    //             sendResponse({ videoId: currentVideoId });
+    //             break;
+    //         case 'disconnectParty':
+    //             sendResponse({ success: true });
+    //             break;
+    //         //case 'toggleSidebar':
+    //         //        document.getElementById('chat-sidebar').style.display = 'block';
+    //     }
+    // });
 
     // Listen for video events 
     function setupVideoListeners() {
@@ -99,7 +99,7 @@
     }
 
     // Listen for incoming video action messages from users to control the video player on other user devices
-    chrome.runtime.onMessage.addListener((message) => {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const videoPlayer = document.querySelector('video');
         if (videoPlayer) {
             if (message.type === 'play') {
@@ -110,6 +110,17 @@
                 videoPlayer.currentTime = message.time;
             }
         }
+
+        switch (message.action) {
+            case 'startParty':
+                sendResponse({ videoId: currentVideoId });
+                break;
+            case 'disconnectParty':
+                sendResponse({ success: true });
+                break;
+            //case 'toggleSidebar':
+            //        document.getElementById('chat-sidebar').style.display = 'block';
+        }
     });
 
     // Run the check when the page is loaded and everytime a video is played/paused
@@ -119,5 +130,5 @@
     });
 
     // Poll every second to check video status
-    setInterval(checkVideoStatus, 1000);
+    // setInterval(checkVideoStatus, 1000);
 })();
