@@ -6,7 +6,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // For broadcasting token to all active tabs 
     if (message.action === 'storeToken' && message.token) {
-        stored.token = message.token;
+        storedToken = message.token;
 
         chrome.tabs.query({}, (tabs) => {
             tabs.forEach(tab => {
