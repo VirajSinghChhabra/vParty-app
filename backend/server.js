@@ -35,7 +35,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Register route GET method
 app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/register.html'));
+    res.sendFile(path.join(__dirname, '../frontend/pages/register.html'));
 });
 
 // Register route POST method
@@ -64,7 +64,7 @@ app.post('/register', (req,res) => {
 
 // Login route GET method
 app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/login.html'));
+    res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
 });
 
 // Login route POST method
