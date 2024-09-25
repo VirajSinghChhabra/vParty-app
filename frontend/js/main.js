@@ -40,8 +40,8 @@ async function handleRegister(event) {
         return;
     }
 
-    try {
-        const response = await fetch('/register', {
+    try { // *** IMPORTANT - update fetch link for production)
+        const response = await fetch('http://localhost:3000/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -57,7 +57,7 @@ async function handleRegister(event) {
         }
     } catch (error) {
         console.error('Error: ', error);
-        alert('An error occured');
+        alert('An error occured while registering');
     }
 }
 
@@ -69,7 +69,7 @@ async function handleLogin(event) {
     const password = form.password.value;
 
     try {
-        const response = await fetch('/login', {
+        const response = await fetch('http://localhost:3000/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -79,15 +79,21 @@ async function handleLogin(event) {
 
         const data = await response.json();
         if (response.ok) {
+            // Store token in the login.html local storage 
             localStorage.setItem('token', data.token);
-            alert('Login successful');
-            form.reset();
+            // Send token to background.js to make it available across all tabs
+            chrome.runtime.sendMessage({ action: 'storeToken', token: data.token }, (response) => {
+                if (response.success) {
+                    alert('Login successful');
+                    form.reset();
+                }
+            });
         } else {
             alert(`Error: ${data.message}`);
         }
     } catch (error) {
         console.error('Error: ', error);
-        alert('An error occured');
+        alert('An error occured during login');
     }
 }
 
