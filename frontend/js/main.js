@@ -1,11 +1,31 @@
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('registerForm').addEventListener('submit', handleRegister);
-    document.getElementById('loginForm').addEventListener('submit', handleLogin);
-    document.getElementById('editProfileForm').addEventListener('submit', handleEditProfile);
-    document.getElementById('forgotPasswordForm').addEventListener('submit', handleForgotPassword);
-    document.getElementById('resetPasswordForm').addEventListener('submit', handleResetPassword);
-    document.getElementById('delete-profile-btn').addEventListener('click', handleDeleteProfile); 
+    const registerForm = document.getElementById('registerForm');
+    const loginForm = document.getElementById('loginForm');
+    const editProfileForm = document.getElementById('editProfileForm');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    const deleteProfileBtn = document.getElementById('delete-profile-btn');
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+    if (editProfileForm) {
+        editProfileForm.addEventListener('submit', handleEditProfile);
+    }
+    if (forgotPasswordForm) {
+        forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+    }
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', handleResetPassword);
+    }
+    if (deleteProfileBtn) {
+        deleteProfileBtn.addEventListener('click', handleDeleteProfile);
+    }
 });
+
 
 // Handle User Registration
 async function handleRegister(event) {
