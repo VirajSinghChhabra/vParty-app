@@ -1,5 +1,22 @@
+// To store login token globally 
+let storedToken = null;
+
 // To ensure communication between content.js and popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+    // For broadcasting token to all active tabs 
+    if (message.action === 'storeToken' && message.token) {
+        stored.token = message.token;
+
+        chrome.tabs.query({}, (tabs) => {
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, { action: 'tokenStored', token: storedToken });
+            });
+        });
+
+        sendResponse({ success: true });
+    }
+
     // Handle video playing status messages
     if (message.videoPlaying !== undefined) {
         // Forward the message to other parts of the extension
