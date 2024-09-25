@@ -13,6 +13,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectVideoMsg = document.getElementById('select-video-msg');
     const ToggleSidebarBtn = document.getElementById('toggle-sidebar');
 
+    // Listen for the token message from background.js 
+    chrome.runtime.onMessage.addListener(message, sender, sendResponse) => {
+        if (message.action === 'tokenStored' && message.token) {
+            // Store the token in popup's local storage
+            localStorage.setItem('token', message.token);
+            console.log('Token stored in popup:', message.token);
+        }
+    }
+    
     // Function to check if user is logged in. Check local storage for token. (so only users logged in can start a party)
     function checkLoginStatus() {
         const token = localStorage.getItem('token');
