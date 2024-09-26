@@ -81,13 +81,10 @@ async function handleLogin(event) {
         if (response.ok) {
             // Store token in the login.html local storage 
             localStorage.setItem('token', data.token);
-            // Send token to background.js to make it available across all tabs
-            chrome.runtime.sendMessage({ action: 'storeToken', token: data.token }, (response) => {
-                if (response.success) {
-                    alert('Login successful');
-                    form.reset();
-                }
-            });
+            // Send token to content.js (which will forward it to background.js) to make it available across all tabs
+            window.postMessage({ type: 'FROM_PAGE', action: 'storeToken', token: data.token }, '*');
+            alert('Login successful');
+            form.reset();
         } else {
             alert(`Error: ${data.message}`);
         }

@@ -124,6 +124,17 @@
         }
     });
 
+    // Listen for login messages from frontend/main.js and forward to background.js
+    window.addEventListener('message', function(event) {
+        if (event.source != window)
+            return;
+
+        if (event.data.type && (event.data.type == 'FROM_PAGE')) {
+            console.log('Content script received: ' + event.data.action);
+            chrome.runtime.sendMessage(event.data);
+        }
+    }, false);
+    
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
         checkIfVideoIsPlaying();
