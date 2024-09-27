@@ -7,7 +7,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // For broadcasting token to all active tabs 
     if (message.action === 'storeToken' && message.token) {
         storedToken = message.token;
+        // Store token in extension's storage 
+        chrome.storage.local.set({ 'token': storedToken }, function() {
+            console.log('Token stored in extension storage');
+        });
 
+        // Broadcast to all tabs
         chrome.tabs.query({}, (tabs) => {
             tabs.forEach(tab => {
                 chrome.tabs.sendMessage(tab.id, { action: 'tokenStored', token: storedToken });
@@ -16,6 +21,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         sendResponse({ success: true });
     }
+
+    // Start code block // ChatGPT help - token storage (detailed reason mentioned in content.js)
+    // Listen for tab updates to inject token if necessary 
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.status === 'complete' && tab.url.includes('netflix.com')) {
+            chrome.storage.local.get(['token'], function(result) {
+                if (result.token) {
+                    chrome.tabs.sendMessage(tabId, { action: 'tokenStored', token: result.token });
+                }
+            })
+        }
+    });
+    // End code block 
 
     // Handle video playing status messages
     if (message.videoPlaying !== undefined) {
@@ -36,15 +54,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     // Redirection logic 
-    if (message.action === "redirectToNetflix") {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            const activeTab = tabs[0];
-            // Redirect to Netflix if not already on it
-            if (!activeTab.url.includes("netflix.com")) {
-                chrome.tabs.update(activeTab.id, { url: "https://www.netflix.com" });
-            }
-        });
-        sendResponse({ success: true });
-    }
+    // if (message.action === "redirectToNetflix") {
+    //     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    //         const activeTab = tabs[0];
+    //         // Redirect to Netflix if not already on it
+    //         if (!activeTab.url.includes("netflix.com")) {
+    //             chrome.tabs.update(activeTab.id, { url: "https://www.netflix.com" });
+    //         }
+    //     });
+    //     sendResponse({ success: true });
+    // }
 
 });

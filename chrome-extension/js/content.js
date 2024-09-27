@@ -130,11 +130,27 @@
             return;
 
         if (event.data.type && (event.data.type == 'FROM_PAGE')) {
-            console.log('Content script received: ' + event.data.action);
-            chrome.runtime.sendMessage(event.data);
+            console.log('Content script received: ' + event.data);
+            // Forward the message to the background script // 
+            // Start code block - ChatGPT help since after multiple nights of debugging (I figured out other login and token related bugs)
+            // I couldn't figure out why the token was not being sent over from login.html local storage to other tabs localstorage.
+            chrome.runtime.sendMessage(event.data, function(response) {
+                console.log('Response from background: ', response);
+                // Send a confirmation back to the page 
+                window.postMessage({ type: 'FROM_EXTENSION', message: 'Token stored successfully' }, '*');
+            });
         }
     }, false);
-    
+
+    // Listen for messages from background.js
+    chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+        if (request.action === 'tokenStored') {
+            // Forward this message to the page 
+            window.postMessage({ type: 'FROM_EXTENSION', action: 'tokenStored' }, '*');
+        }
+    });
+            // End code block - ChatGPT help 
+
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
         checkIfVideoIsPlaying();
