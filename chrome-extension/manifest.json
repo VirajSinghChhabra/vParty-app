@@ -3,8 +3,7 @@
     "name": "vParty Extension",
     "version": "1.0",
     "description": "Syncs video playback and chat for a better watch party experience.",
-    "permissions": [
-        "tabs", 
+    "permissions": [ 
         "activeTab",
         "storage"
     ],
@@ -16,11 +15,11 @@
     },
     "content_scripts": [
         {
-            "matches": ["<all_urls>"],
+            "matches": ["*://*.netflix.com/*"],
             "js": ["js/content.js"]
         }
     ],
     "host_permissions": [
-        "<all_urls>"
+        "*://*.netflix.com/*"
     ]
 }
