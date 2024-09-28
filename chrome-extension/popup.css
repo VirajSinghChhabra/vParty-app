@@ -3,6 +3,8 @@ body {
     color: #fff;
     font-family: Arial, sans-serif;
     padding: 10px;
+    width: 20em;
+    height: 20em;
 }
 #header {
     display: flex;
