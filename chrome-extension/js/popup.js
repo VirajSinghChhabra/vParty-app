@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     inviteLinkInput.value = inviteLink;
                     document.getElementById('invite-section').classList.remove('d-none');
                     disconnectBtn.classList.remove('d-none');
+                    startPartyBtn.classList.add('d-none');
                 } else {
                     console.error('No video found');
                     alert('No video found. Please select a video and try again.');
