@@ -162,6 +162,26 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         }
     }
+    // Listen for the token message from background.js or content.js 
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'tokenStored') {
+            // Refresh the popup to reflect the new logged-in view
+            window.location.reload();
+        }
+
+        // Video selection logic/Start Watch Party button toggle 
+        //if (message.videoPlaying !== undefined) {
+        //    if (message.videoPlaying) {
+        //        startPartyBtn.disabled = false;
+        //        startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
+        //        selectVideoMsg.classList.add('d-none');
+        //    } else {
+        //        startPartyBtn.disabled = true;
+        //        startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
+        //        selectVideoMsg.classList.remove('d-none');
+        //    }
+        //}
+    });
 
     handleInviteLink();
 });
