@@ -1,6 +1,8 @@
 // To store login token globally 
 let storedToken = null;
 
+let socket = null;
+
 // To ensure communication between content.js and popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
@@ -35,34 +37,64 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     // End code block 
 
-    // Handle video playing status messages
-    if (message.videoPlaying !== undefined) {
-        // Forward the message to other parts of the extension
-        chrome.runtime.sendMessage(message);
+    if (message.action === 'createSession') {
+        fetch('http://localhost:3000/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId: sender.tab.id, videoId: message.videoId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            connectSocket(data.sessionId);
+            sendResponse({ sessionId: data.sessionId });
+        })
+        .catch(error => sendResponse({ error: 'Failed to create session' }));
+        return true;
     }
+
+    if (message.action === 'joinSession') {
+        fetch(`http://localhost:3000/session/${message.sessionId}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: sender.tab.id })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                connectSocket(message.sessionId);
+                sendResponse({ success: true, videoId: data.videoId });
+            } else {
+                sendResponse({ success: false, error: data.error });
+            }
+        })
+        .catch(error => sendReponse({ success: false, error: 'Failed to join session' }));
+        return true;
+    }
+
+    // Handle video playing status messages
+    // if (message.videoPlaying !== undefined) {
+    //     // Forward the message to other parts of the extension
+    //     chrome.runtime.sendMessage(message);
+    // }
 
     // Handle video actions
     if (message.action === 'videoAction') {
-        // Broadcast to all connected tabs except the sender tab
-        chrome.tabs.query({ url: "*://www.netflix.com/*" }, (tabs) => {
-            tabs.forEach((tab) => {
-                if (tab.id !== sender.tab.id) {
-                    chrome.tabs.sendMessage(tab.id, message);
-                }
+        if (socket) {
+            socket.emit('videoAction', { sessionId: message.sessionId, action: message.actionData });
+        }
+    }
+});
+
+function connectSocket(sessionId) {
+    socket = io('http://localhost:3000');
+    socket.on('connect', () => {
+        socket.emit('joinSession', sessionId);
+    });
+    socket.on('videoAction', (action) => {
+        chrome.tabs.query({}, (tabs) => {
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, { action: 'videoAction', actionData: action });
             });
         });
-    }
-
-    // Redirection logic 
-    // if (message.action === "redirectToNetflix") {
-    //     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    //         const activeTab = tabs[0];
-    //         // Redirect to Netflix if not already on it
-    //         if (!activeTab.url.includes("netflix.com")) {
-    //             chrome.tabs.update(activeTab.id, { url: "https://www.netflix.com" });
-    //         }
-    //     });
-    //     sendResponse({ success: true });
-    // }
-
-});
+    });
+}

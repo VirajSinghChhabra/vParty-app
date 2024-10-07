@@ -12,11 +12,19 @@ const { authenticateToken, createToken, hashPassword, comparePassword } = requir
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
+const { v4: uuidv4 } = require('uuid');
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = socketIo(server);
+
+// *** CHANGE FOR PRODUCTION - Session storage (use database for production)
+const sessions = {};
 
 // Transporter for sending emails (forgot password feature)
 const transporter = nodemailer.createTransport({
@@ -225,7 +233,46 @@ app.get('/protected', authenticateToken, (req, res) => {
     res.status(200).json({ message: 'This is a protected route' });
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// Routes for Watch party session management 
+app.post('/session', authenticateToken, (req, res) => {
+    const sessionId = uuidv4();
+    sessions[sessionId] = {
+        hostId: req.user.id,
+        videoId: req.body.videoId,
+        participants: [req.user.id]
+    };
+    res.json({ sessionId });
 });
 
+app.post('/session/:sessionId/join', authenticateToken, (req, res) => {
+    const sessionId = req.params.sessionId.sessionId;
+    const userId = req.user.id;
+
+    if (sessions[sessionId]) {
+        sessions[sessionId].participants.push(userId);
+        res.json({ success: true, videoId: sessions[sessionId].videoId });
+    } else {
+        res.status(404).json({ success: false, error: 'Session not found' });
+    }
+});
+
+// WebSocket handling
+io.on('connection', (socket) => {
+    console.log('New client connected');
+
+    socket.on('joinSession', (sessionId) => {
+        socket.join(sessionId);
+    });
+
+    socket.on('videoAction', (data) => {
+        socket.to(data.sessionId).emit('videoAction', data.action);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+});
+
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+});

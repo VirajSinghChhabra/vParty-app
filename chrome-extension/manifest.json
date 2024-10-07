@@ -16,10 +16,11 @@
     "content_scripts": [
         {
             "matches": ["http://localhost:3000/login", "http://localhost:3000/register", "*://*.netflix.com/*"],
-            "js": ["js/content.js"]
+            "js": ["js/content.js", "js/socket.io.js"]
         }
     ],
     "host_permissions": [
-        "*://*.netflix.com/*"
+        "*://*.netflix.com/*",
+        "http://localhost:3000/*"
     ]
 }

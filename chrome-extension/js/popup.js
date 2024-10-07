@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const notLoggedIn = document.getElementById('not-logged-in');
     const startPartyBtn = document.getElementById('start-party-btn');
     const inviteLinkInput = document.getElementById('invite-link');
+    const inviteSection = document.getElementById('invite-section');
     const copyLinkBtn = document.getElementById('copy-link-btn');
     const redirectBtn = document.getElementById('redirect-btn');
     const disconnectBtn = document.getElementById('disconnect-btn');
@@ -12,30 +13,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectVideoMsg = document.getElementById('select-video-msg');
     const ToggleSidebarBtn = document.getElementById('toggle-sidebar');
 
-    // Check for token when popup opens
-    chrome.storage.local.get(['token'], function(result) {
-        if (result.token) {
-            // User is logged in 
-            userInfo.classList.remove('d-none');
-            notLoggedIn.classList.add('d-none');
-            startPartyBtn.disabled = false;
-            startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
-            selectVideoMsg.classList.add('d-none');
+    let currentSessionId = null;
 
-            // Parse the token to get user info
+    // Function to update UI based on view stages
+    function updateUI(isLoggedIn, hasVideo, isInParty) {
+        userInfo.classList.toggle('d-none', !isLoggedIn);
+        notLoggedIn.classList.toggle('d-none', isLoggedin);
+        startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
+        startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
+        startPartyBtn.classList.toggle('btn-primary', isLoggedIn && hasVideo && !isInParty);
+        selectVideoMsg.classList.toggle('d-none', hasVideo);
+        inviteSection.classList.toggle('d-none', !isInParty);
+        disconnectBtn.classList.toggle('d-none', !isInParty);
+        startPartyBtn.classList.toggle('d-none', isInParty);
+    }
+
+    // Check for token and session when popup opens
+    chrome.storage.local.get(['token', 'sessionId'], function(result) {
+        const isLoggedIn = !!result.token;
+        currentSessionId = result.sessionId;
+
+        if (isLoggedIn) {
             const user = parseJWT(result.token);
             if (user) {
                 document.getElementById('username').textContent = user.name || 'User';
-                document.getElementById('email').textContent = user.email || 'user@example.com';
+                document.getElementById('email').textContent = user.name || 'user@example.com';
             }
-        } else {
-            // User is not logged in
-            userInfo.classList.add('d-none');
-            notLoggedIn.classList.remove('d-none');
-            startPartyBtn.disabled = true;
-            startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
-            selectVideoMsg.classList.remove('d-none');
         }
+
+        chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
+                updateUI(isLoggedIn, response.hasVideo, response.isInParty);
+                if (response.isInParty && currentSessionId) {
+                    inviteLinkInput.value = `https://www.netflix.com/watch?sessionId=${currentSessionId}`;
+                }
+            });
+        });
     });
 
     // Check if current tab is Netflix for redirectBtn
@@ -58,34 +71,19 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: 'http://localhost:3000/login' });
     });
 
-    // Redirect button
-    // Not sure if to keep this // redirectBtn.addEventListener('click', function() {
-    // Not sure if to keep this //     chrome.runtime.sendMessage({ action: "redirectToNetflix" });
-    // Not sure if to keep this // });
-
     // Start Watch party button click event
     startPartyBtn.addEventListener('click', function() {
         // Start the watch party 
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'startParty' }, function(response) {
-                if (chrome.runtime.lastError) {
-                    console.error('Error sending message:', chrome.runtime.lastError);
-                    alert('Failed to start the watch party. Please try again.');
-                    return;
-                }
-
-                if (response && response.videoId) {
-                    // ChatGPT help for generating and displaying invite link
-                    const sessionID = generateSessionID();
-                    localStorage.setItem('sessionID', sessionID);
-                    const inviteLink = `https://netflix.com/watch?sessionID=${sessionID}&videoId=${response.videoId}`;                    inviteLinkInput.value = inviteLink;
+                if (response && response.success) {
+                    currentSessionId = response.sessionId;
+                    chrome.storage.local.set({sessionId: currentSessionId});
+                    const inviteLink = `http://www.netflix.com/watch?sessionId=${currentSessionId}`;
                     inviteLinkInput.value = inviteLink;
-                    document.getElementById('invite-section').classList.remove('d-none');
-                    disconnectBtn.classList.remove('d-none');
-                    startPartyBtn.classList.add('d-none');
+                    updateUI(true, true, true);
                 } else {
-                    console.error('No video found');
-                    alert('No video found. Please select a video and try again.');
+                    alert('Failed to start the watch party. Please try again.');
                 }
             });
         });
@@ -95,17 +93,14 @@ document.addEventListener('DOMContentLoaded', function() {
     disconnectBtn.addEventListener('click', function() {
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'disconnectParty' }, function(response) {
-                if (chrome.runtime.lastError) {
-                    console.error('Error sending message:', chrome.runtime.lastError);
-                    alert('Failed to disconnect from the party. Please try again.');
-                    return;
-                }
-
                 // Reset the popup state after disconnection
-                document.getElementById('invite-section').classList.add('d-none');
-                disconnectBtn.classList.add('d-none');
-                startPartyBtn.disabled = true;
-                startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
+                if (response && response.success) {
+                    chrome.storage.local.remove('sessionId');
+                    currentSessionId = null;
+                    updateUI (true, true, false);
+                } else {
+                    alert('Failed to disconnect from the party. Please try again.');
+                }
             });
         });
     });
@@ -133,10 +128,23 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: 'https://www.netflix.com' });
     });
 
-    // Function to generate a unique session ID
-    // ChatGPT code for this function
-    function generateSessionID() {
-        return '_' + Math.random().toString(36).substring(2,9);
+    // Function to handle joining a party from an invite link
+    function handleInviteLink() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('sessionId');
+        if (sessionId) {
+            chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+                chrome.tabs.sendMessage(tabs[0].id, {action: 'joinParty', sessionId: sessionId}, function(response) {
+                    if (response && response.success) {
+                        currentSessionId = sessionId;
+                        chrome.storage.local.set({sessionId: currentSessionId});
+                        updateUI(true, true, true);
+                    } else {
+                        alert(' Failed to join the watch party. Please try again.');
+                    }                   
+                });
+            });
+        }
     }
 
     // Function to parse JWT and extract user info for displaying in header of the popup
@@ -155,24 +163,5 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Listen for the token message from background.js or content.js 
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.action === 'tokenStored') {
-            // Refresh the popup to reflect the new logged-in view
-            window.location.reload();
-        }
-
-        // Video selection logic/Start Watch Party button toggle 
-        if (message.videoPlaying !== undefined) {
-            if (message.videoPlaying) {
-                startPartyBtn.disabled = false;
-                startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
-                selectVideoMsg.classList.add('d-none');
-            } else {
-                startPartyBtn.disabled = true;
-                startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
-                selectVideoMsg.classList.remove('d-none');
-            }
-        }
-    });
+    handleInviteLink();
 });
