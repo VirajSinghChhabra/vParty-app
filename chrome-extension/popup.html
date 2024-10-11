@@ -28,7 +28,7 @@
 
         <!-- Logged in view (hidden by default) -->
         <div id="logged-in" class="d-none">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 d-none" id="user-info"">
                 <div>
                     <h4 id="username">User Name</h4>
                     <p id="email">user@example.com</p>
@@ -49,8 +49,7 @@
             <!-- Start Watch Party button (locked until video selected) -->
             <div id="party-section" class="text-center">
                 <button id="start-party-btn" class="btn btn-secondary" disabled>Start Watch Party</button>
-                <p id="select-video-msg" class="text-muted d-none">Please select a video.</p>
-                <button id="toggle-sidebar-btn" class="btn btn-info d-none">Open Chat Sidebar</button>
+                <p id="select-video-msg">Please select a video.</p>
             </div>
 
             <!-- Disconnect from Party button -->

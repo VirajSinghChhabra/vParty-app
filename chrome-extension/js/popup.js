@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const createAccBtn = document.getElementById('create-account-btn');
     const loginBtn = document.getElementById('login-btn');
-    const userInfo = document.getElementById('logged-in');
+    const userInfo = document.getElementById('user-info');
     const notLoggedIn = document.getElementById('not-logged-in');
     const startPartyBtn = document.getElementById('start-party-btn');
     const inviteLinkInput = document.getElementById('invite-link');
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
-        userInfo.classList.toggle('d-none', !isLoggedIn);
+        userInfo.classList.toggle('d-none', isLoggedIn);
         notLoggedIn.classList.toggle('d-none', isLoggedin);
         startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
         startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Video selection logic/Start Watch Party button toggle
-        if (message.videoPlaying !== undefined) {
-            updateVideoUI(message.videoPlaying);
-        }
+        // // Video selection logic/Start Watch Party button toggle
+        // if (message.videoPlaying !== undefined) {
+        //     updateVideoUI(message.videoPlaying);
+        // }
     });
 
     // Check if current tab is Netflix for redirectBtn
@@ -187,14 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Invalid token:', err);
             return null;
         }
-    }
-    
-    // Function for Video selection logic/Start Watch Party button toggle 
-    function updateVideoUI(videoPlaying) {
-        startPartyBtn.disabled = !videoPlaying;
-        startPartyBtn.classList.toggle('btn-secondary', !videoPlaying);
-        startPartyBtn.classList.toggle('btn-primary', videoPlaying);
-        selectVideoMsg.classList.toggle('d-none', videoPlaying);
     }
 
     handleInviteLink();

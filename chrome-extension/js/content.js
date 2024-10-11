@@ -173,7 +173,6 @@
 
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
-        checkIfVideoIsPlaying();
         setupVideoListeners();
     });
 

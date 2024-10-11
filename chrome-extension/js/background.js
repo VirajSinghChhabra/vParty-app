@@ -69,12 +69,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    // Handle video playing status messages
-    // if (message.videoPlaying !== undefined) {
-    //     // Forward the message to other parts of the extension
-    //     chrome.runtime.sendMessage(message);
-    // }
-
     // Handle video actions
     if (message.action === 'videoAction') {
         if (socket) {
