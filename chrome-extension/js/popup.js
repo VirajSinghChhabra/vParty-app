@@ -28,27 +28,53 @@ document.addEventListener('DOMContentLoaded', function() {
         startPartyBtn.classList.toggle('d-none', isInParty);
     }
 
-    // Check for token and session when popup opens
-    chrome.storage.local.get(['token', 'sessionId'], function(result) {
-        const isLoggedIn = !!result.token;
-        currentSessionId = result.sessionId;
-
+    function updateLoginState(token) {
+        const isLoggedIn = !!token;
         if (isLoggedIn) {
-            const user = parseJWT(result.token);
+            const user = parseJWT(token);
             if (user) {
                 document.getElementById('username').textContent = user.name || 'User';
                 document.getElementById('email').textContent = user.name || 'user@example.com';
             }
         }
+        return isLoggedIn;
+    }
 
+    function checkPartyStatusAndUpdateUI(isLoggedIn) {
         chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
             chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
-                updateUI(isLoggedIn, response.hasVideo, response.isInParty);
-                if (response.isInParty && currentSessionId) {
-                    inviteLinkInput.value = `https://www.netflix.com/watch?sessionId=${currentSessionId}`;
+                if (response) {
+                    updateUI(isLoggedIn, response.hasVideo, response.isInParty);
+                    if (response.isInParty && currentSessionId) {
+                        inviteLinkInput.value = `https://www.netflix.com/watch?sessionId=${currentSessionId}`;
+                    }
+                } else {
+                    updateUI(isLoggedIn, false, false);
                 }
             });
         });
+    }
+
+    // Initial check for token and session when popup opens
+    chrome.storage.local.get(['token', 'sessionId'], function(result) {
+        currentSessionId = result.sessionId;
+        const isLoggedIn = updateLoginState(result.token);
+        checkPartyStatusAndUpdateUI(isLoggedIn);
+    });
+
+    // Listen for tokenStored message when user logs in (when they were not logged in)
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'tokenStored') {
+            chrome.storage.local.get(['token'], function(result) {
+                const isLoggedIn = updateLoginState(result.token);
+                checkPartyStatusAndUpdateUI(isLoggedIn);
+            });
+        }
+
+        // Video selection logic/Start Watch Party button toggle
+        if (message.videoPlaying !== undefined) {
+            updateVideoUI(message.videoPlaying);
+        }
     });
 
     // Check if current tab is Netflix for redirectBtn
@@ -162,26 +188,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         }
     }
-    // Listen for the token message from background.js or content.js 
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.action === 'tokenStored') {
-            // Refresh the popup to reflect the new logged-in view
-            window.location.reload();
-        }
-
-        // Video selection logic/Start Watch Party button toggle 
-        if (message.videoPlaying !== undefined) {
-            if (message.videoPlaying) {
-                startPartyBtn.disabled = false;
-                startPartyBtn.classList.replace('btn-secondary', 'btn-primary');
-                selectVideoMsg.classList.add('d-none');
-            } else {
-                startPartyBtn.disabled = true;
-                startPartyBtn.classList.replace('btn-primary', 'btn-secondary');
-                selectVideoMsg.classList.remove('d-none');
-            }
-        }
-    });
+    
+    // Function for Video selection logic/Start Watch Party button toggle 
+    function updateVideoUI(videoPlaying) {
+        startPartyBtn.disabled = !videoPlaying;
+        startPartyBtn.classList.toggle('btn-secondary', !videoPlaying);
+        startPartyBtn.classList.toggle('btn-primary', videoPlaying);
+        selectVideoMsg.classList.toggle('d-none', videoPlaying);
+    }
 
     handleInviteLink();
 });

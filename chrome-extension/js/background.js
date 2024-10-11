@@ -5,23 +5,21 @@ let socket = null;
 
 // To ensure communication between content.js and popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-
-    // For broadcasting token to all active tabs 
     if (message.action === 'storeToken' && message.token) {
         storedToken = message.token;
         // Store token in extension's storage 
         chrome.storage.local.set({ 'token': storedToken }, function() {
             console.log('Token stored in extension storage');
-        });
-
-        // Broadcast to all tabs
-        chrome.tabs.query({}, (tabs) => {
-            tabs.forEach(tab => {
-                chrome.tabs.sendMessage(tab.id, { action: 'tokenStored', token: storedToken });
+            // Broadcast to all tabs
+            chrome.runtime.sendMessage({ action: 'tokenStored', token: storedToken });
+            chrome.tabs.query({}, (tabs) => {
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, { action: 'tokenStored', token: storedToken });
+                });
             });
         });
-
         sendResponse({ success: true });
+        return true;
     }
 
     // Start code block // ChatGPT help - token storage (detailed reason mentioned in content.js)

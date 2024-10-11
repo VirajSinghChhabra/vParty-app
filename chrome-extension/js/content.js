@@ -127,6 +127,13 @@
         if (message.action === 'videoAction') {
             handleVideoAction(message.actionData);
         }
+
+        if (message.action === 'getPartyStatus') {
+            sendResponse({
+                hasVideo: !!detectVideo(),
+                isInParty: isInParty
+            });
+        }
     });
 
     function connectSocket() {
