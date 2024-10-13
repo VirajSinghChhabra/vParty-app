@@ -17,8 +17,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
-        userInfo.classList.toggle('d-none', isLoggedIn);
-        notLoggedIn.classList.toggle('d-none', isLoggedin);
+        userInfo.classList.toggle('d-none', !isLoggedIn);
+        notLoggedIn.classList.toggle('d-none', isLoggedIn);
         startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
         startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
         startPartyBtn.classList.toggle('btn-primary', isLoggedIn && hasVideo && !isInParty);
