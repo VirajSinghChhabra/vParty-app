@@ -177,6 +177,6 @@
     });
 
     // Poll every second to check video status
-    setInterval(checkVideoStatus, 1000);
-    setInterval(setupVideoListeners, 1000);
+    setInterval(checkVideoStatus, 1000); // Do I need to add if statement to make sure these checks only run on netflix site 
+    setInterval(setupVideoListeners, 1000); // and for this when video player is on which means videoIsDetected
 })();

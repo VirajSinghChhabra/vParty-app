@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
         userInfo.classList.toggle('d-none', !isLoggedIn);
-        notLoggedIn.classList.toggle('d-none', isLoggedIn);
+        notLoggedIn.classList.toggle('d-none', isLoggedIn); // When this is commented out, the Create acc and Login buttons show up (this is somehow hiding them when not logged in)
         startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
         startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
         startPartyBtn.classList.toggle('btn-primary', isLoggedIn && hasVideo && !isInParty);
