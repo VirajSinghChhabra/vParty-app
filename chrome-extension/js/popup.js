@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const createAccBtn = document.getElementById('create-account-btn');
     const loginBtn = document.getElementById('login-btn');
     const userInfo = document.getElementById('user-info');
+    const loggedIn = document.getElementById('logged-in');
     const notLoggedIn = document.getElementById('not-logged-in');
     const startPartyBtn = document.getElementById('start-party-btn');
     const inviteLinkInput = document.getElementById('invite-link');
@@ -17,8 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
-        userInfo.classList.toggle('d-none', !isLoggedIn);
-        notLoggedIn.classList.toggle('d-none', isLoggedIn); // When this is commented out, the Create acc and Login buttons show up (this is somehow hiding them when not logged in)
+        //loggedIn.classList.toggle('d-none', isLoggedIn); // This one is an issue. Guess: It is the parent element so hiding it hides everything else except create acc/login btn.
+        userInfo.classList.toggle('d-none', !isLoggedIn); 
+        //notLoggedIn.classList.toggle('d-none', isLoggedIn); // When this is commented out, the Create acc and Login buttons show up (this is somehow hiding them when not logged in)
         startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
         startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
         startPartyBtn.classList.toggle('btn-primary', isLoggedIn && hasVideo && !isInParty);
