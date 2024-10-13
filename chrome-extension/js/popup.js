@@ -71,10 +71,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // // Video selection logic/Start Watch Party button toggle
-        // if (message.videoPlaying !== undefined) {
-        //     updateVideoUI(message.videoPlaying);
-        // }
+        // Video selection logic/Start Watch Party button toggle
+        if (message.videoPlaying !== undefined) {
+            updateVideoUI(message.videoPlaying);
+        }
     });
 
     // Check if current tab is Netflix for redirectBtn
