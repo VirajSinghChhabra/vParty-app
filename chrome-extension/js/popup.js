@@ -18,12 +18,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
-        //loggedIn.classList.toggle('d-none', isLoggedIn); // This one is an issue. Guess: It is the parent element so hiding it hides everything else except create acc/login btn.
+        // Toggle main views based on login state
+        loggedIn.classList.toggle('d-none', !isLoggedIn); // Show logged-in view if user is logged in 
+        notLoggedIn.classList.toggle('d-none', isLoggedIn); // Hide "not logged in" view if user is logged in 
+
+        // Update user info visibility 
         userInfo.classList.toggle('d-none', !isLoggedIn); 
-        //notLoggedIn.classList.toggle('d-none', isLoggedIn); // When this is commented out, the Create acc and Login buttons show up (this is somehow hiding them when not logged in)
+
+        // Handle the start party button visibility and state
         startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
         startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
         startPartyBtn.classList.toggle('btn-primary', isLoggedIn && hasVideo && !isInParty);
+
+        // Toggle other elements based on party state
         selectVideoMsg.classList.toggle('d-none', hasVideo);
         inviteSection.classList.toggle('d-none', !isInParty);
         disconnectBtn.classList.toggle('d-none', !isInParty);
