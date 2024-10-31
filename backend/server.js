@@ -234,6 +234,10 @@ app.get('/protected', authenticateToken, (req, res) => {
 });
 
 // Routes for Watch party session management 
+app.get('/join/:sessionId', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/join.html'));
+});
+
 app.post('/session', authenticateToken, (req, res) => {
     const sessionId = uuidv4();
     sessions[sessionId] = {

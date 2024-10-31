@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Join Watch Party</title>
+    <script>
+        // Extract sessionId and videoId from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = window.location.pathname.split('/').pop();
+        const videoId = urlParams.get('videoId');
+
+        // Send sessionId and videoId to background.js
+        if (sessionId && videoId) {
+            chrome.runtime.sendMessage({ action: 'storeSessionId', sessionId, videoId }, function(response) {
+                if (response && response.success) {
+                    window.close(); // Close this tab after storing session ID
+                } else {
+                    console.error('Failed to store session ID.');
+                }
+            });
+        } else {
+            console.error('Invalid session or video ID.');
+        }
+    </script>
+</head>
+<body>
+    <p>Joining the watch party...</p>
+</body>
+</html>

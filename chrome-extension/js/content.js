@@ -68,22 +68,22 @@
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${result.token}`
                         },
-                        body: JSON.stringify({ videoId: currentVideoId })
+                        body: JSON.stringify({ videoId: currentVideoId })  
                     })
                     .then(response => response.json())
                     .then(data => {
                         sessionId = data.sessionId;
                         isInParty = true;
                         connectSocket();
-                        sendResponse({ success: true, sessionId }); 
+                        sendResponse({ success: true, sessionId: sessionId, videoId: currentVideoId }); 
                     })
                     .catch(error => sendResponse({ success: false, error: 'Failed to create session' }));
                 } else {
                     sendResponse({ success: false, error: 'User not logged in' });
                 }
             });
-            return true;
-        } 
+            return true; 
+        }
 
         if (message.action === 'joinParty') {
             chrome.storage.local.get(['token'], function(result) {
@@ -171,8 +171,39 @@
     });
             // End code block - ChatGPT help 
 
+    // Join the session from local storage
+    function joinSessionFromStorage() {
+        chrome.storage.local.get(['sessionId'], function(result) {
+            if (result.sessionId) {
+                sessionId = result.sessionId;
+                isInParty = true;
+                // Send a join request to background.js and sync video state
+                chrome.runtime.sendMessage({ action: 'joinParty', sessionId }, function(response) {
+                    if (response && response.success) {
+                        console.log('Joined session successfully.');
+                        syncVideoState(response.videoId); // Sync the video state with the session data
+                    } else {
+                        console.error('Failed to join the session.');
+                    }
+                });
+                connectSocket(); // Join the WebSocket session
+            }
+        });
+    }
+
+    // Sync video state on joining the session
+    function syncVideoState(videoId) {
+        const video = detectVideo();
+        if (video) {
+            if (videoId) {
+                currentVideoId = videoId;
+            }
+            socket.emit('syncVideoState', { sessionId, videoId: currentVideoId });
+        }
+    }
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
+        joinSessionFromStorage();
         setupVideoListeners();
     });
 

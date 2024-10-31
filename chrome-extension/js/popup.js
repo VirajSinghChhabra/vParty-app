@@ -106,15 +106,13 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: 'http://localhost:3000/login' });
     });
 
-    // Start Watch party button click event
     startPartyBtn.addEventListener('click', function() {
-        // Start the watch party 
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'startParty' }, function(response) {
                 if (response && response.success) {
                     currentSessionId = response.sessionId;
-                    chrome.storage.local.set({sessionId: currentSessionId});
-                    const inviteLink = `http://www.netflix.com/watch?sessionId=${currentSessionId}`;
+                    chrome.storage.local.set({ sessionId: currentSessionId });
+                    const inviteLink = `https://www.netflix.com/watch/${response.videoId}`; 
                     inviteLinkInput.value = inviteLink;
                     updateUI(true, true, true);
                 } else {
@@ -123,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    
 
     // Disconnect from the party function
     disconnectBtn.addEventListener('click', function() {
