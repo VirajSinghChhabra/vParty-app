@@ -29,21 +29,30 @@
         }
     }
 
-    // Listen for video events 
-    function setupVideoListeners() {
-        const video = detectVideo();
-        if (video && !video.hasListeners) {
-            video.addEventListener('play', () => sendVideoAction('play'));
-            video.addEventListener('pause', () => sendVideoAction('pause'));
-            video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
-            video.hasListeners = true;
-        }
-    }
+    // // Listen for video events 
+    // function setupVideoListeners() {
+    //     const video = detectVideo();
+    //     if (video && !video.hasListeners) {
+    //         video.addEventListener('play', () => sendVideoAction('play'));
+    //         video.addEventListener('pause', () => sendVideoAction('pause'));
+    //         video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
+    //         video.hasListeners = true;
+    //     }
+    // }
 
     // Function to send video actions with sessionId
-    function sendVideoAction(type, data) {
-        if (isInParty && socket) {
-            socket.emit('videoAction', { sessionId, action: { type, data } });
+    // function sendVideoAction() {
+    //     if (isInParty && socket) {
+    //         socket.emit('videoAction', { sessionId, action: { type, data } });
+    //     }
+    // }
+
+    function sendVideoAction() {
+        const video = detectVideo();
+        if (video) {
+            video.addEventListener('play', () => sendVideoAction('play', video.currentTime));
+            video.addEventListener('pause', () => sendVideoAction('pause', video.currentTime));
+            video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
         }
     }
 
@@ -51,12 +60,74 @@
     function handleVideoAction(action) {
         const video = detectVideo();
         if (video) {
-            if (action.type === 'play') video.play();
-            else if (action.type === 'pause') video.pause();
-            else if (action.type === 'seek') video.currentTime = action.data;
+            if (action.type === 'play') {
+                video.currentTime = action.data;
+                video.play();
+            } else if (action.type === 'pause') {
+                video.currentTime = action.data;
+                video.pause();
+            } else if (action.type === 'seek') {
+                video.currentTime = action.data;
+            }
+        }
+    }
+    
+    function connectSocket() {
+        socket = io('http://localhost:3000');
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            socket.emit('joinSession', sessionId);
+        });
+    
+        socket.on('disconnect', () => {
+            console.warn('Disconnected from server.');
+        });
+    
+        socket.io.on('reconnect', (attemptNumber) => {
+            console.log(`Reconnected after ${attemptNumber} attempts`);
+            socket.emit('joinSession', sessionId); // Rejoin the session on reconnect
+        });
+    
+        socket.on('connect_error', (error) => {
+            console.error('Connection error:', error);
+        });
+        socket.on('videoAction', handleVideoAction);
+    }
+
+    // Extract sessionId from invite link and trigger joinSession
+    function extractSessionId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('sessionId');
+    }
+
+    function joinSessionOnLoad() {
+        const sessionId = extractSessionId();
+        if (sessionId) {
+            joinSession(sessionId);
         }
     }
 
+    // Sync state on join (request state from backend)
+    function joinSession(sessionId) {
+        fetch(`http://localhost:3000/session/${sessionId}/join`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                syncVideoToState(data.videoId, data.current, data.isPlaying);
+            }
+        })
+    }
+
+    function syncVideoToState(videoId, currentTime, isPlaying) {
+        const video = detectVideo();
+        if (video) {
+            video.currentTime = currentTime;
+            isPlaying ? video.play() : video.pause();
+        }
+    }
     // Handle party session Start, Join and Disconnect features
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'startParty') {
@@ -136,13 +207,6 @@
         }
     });
 
-    function connectSocket() {
-        socket = io('http://localhost:3000');
-        socket.on('connect', () => {
-            socket.emit('joinSession', sessionId);
-        });
-        socket.on('videoAction', handleVideoAction);
-    }
 
     // Listen for login messages from frontend/main.js and forward to background.js
     window.addEventListener('message', function(event) {
@@ -204,10 +268,11 @@
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
         joinSessionFromStorage();
-        setupVideoListeners();
+        joinSessionOnLoad()
+        // setupVideoListeners();
     });
 
     // Poll every second to check video status
     setInterval(checkVideoStatus, 1000); // Do I need to add if statement to make sure these checks only run on netflix site 
-    setInterval(setupVideoListeners, 1000); // and for this when video player is on which means videoIsDetected
+    // setInterval(setupVideoListeners, 1000); // and for this when video player is on which means videoIsDetected
 })();

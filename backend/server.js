@@ -24,7 +24,7 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 // *** CHANGE FOR PRODUCTION - Session storage (use database for production)
-const sessions = {};
+const sessions = {}; // Persisten session state. Note - current implementation is only for 1 session for multiple users. 
 
 // Transporter for sending emails (forgot password feature)
 const transporter = nodemailer.createTransport({
@@ -238,23 +238,32 @@ app.get('/join/:sessionId', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/pages/join.html'));
 });
 
+// On session creation, store session state 
 app.post('/session', authenticateToken, (req, res) => {
     const sessionId = uuidv4();
     sessions[sessionId] = {
         hostId: req.user.id,
         videoId: req.body.videoId,
+        currentTime: 0, // Initial video time
+        isPlaying: false, // Initial playback state
         participants: [req.user.id]
     };
-    res.json({ sessionId });
+    res.json({ sessionId, videoId });
 });
 
+// Handle state retrieval for New Users
 app.post('/session/:sessionId/join', authenticateToken, (req, res) => {
     const sessionId = req.params.sessionId.sessionId;
     const userId = req.user.id;
 
     if (sessions[sessionId]) {
         sessions[sessionId].participants.push(userId);
-        res.json({ success: true, videoId: sessions[sessionId].videoId });
+        res.json({ 
+            success: true,
+            videoId: sessions[sessionId].videoId,
+            currentTime: sessions[sessionId].currentTime,
+            isPlaying: sessions[sessionId].isPlaying 
+        });
     } else {
         res.status(404).json({ success: false, error: 'Session not found' });
     }
@@ -268,8 +277,15 @@ io.on('connection', (socket) => {
         socket.join(sessionId);
     });
 
+    // Update the session state when receiving video actions
     socket.on('videoAction', (data) => {
+        if (sessions[data.sessionId]) {
+        // Update the session state with the latest video time and playback status 
+        sessions[data.sessionId].currentTime = data.currentTime;
+        sessions[data.sessionId].isPlaying = data.isPlaying;
+        // Broadcast the updated state to all users in the session
         socket.to(data.sessionId).emit('videoAction', data.action);
+        }
     });
 
     socket.on('disconnect', () => {

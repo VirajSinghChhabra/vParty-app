@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response && response.success) {
                     currentSessionId = response.sessionId;
                     chrome.storage.local.set({ sessionId: currentSessionId });
-                    const inviteLink = `https://www.netflix.com/watch/${response.videoId}`; 
+                    const inviteLink = `https://www.netflix.com/watch/${response.videoId}?sessionId=${currentSessionId}`; 
                     inviteLinkInput.value = inviteLink;
                     updateUI(true, true, true);
                 } else {
