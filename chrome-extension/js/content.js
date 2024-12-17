@@ -29,23 +29,23 @@
         }
     }
 
-    // // Listen for video events 
-    // function setupVideoListeners() {
-    //     const video = detectVideo();
-    //     if (video && !video.hasListeners) {
-    //         video.addEventListener('play', () => sendVideoAction('play'));
-    //         video.addEventListener('pause', () => sendVideoAction('pause'));
-    //         video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
-    //         video.hasListeners = true;
-    //     }
-    // }
+    // Listen for video events 
+    function setupVideoListeners() {
+        const video = detectVideo();
+        if (video && !video.hasListeners) {
+            video.addEventListener('play', () => sendVideoAction('play'));
+            video.addEventListener('pause', () => sendVideoAction('pause'));
+            video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
+            video.hasListeners = true;
+        }
+    }
 
     // Function to send video actions with sessionId
-    // function sendVideoAction() {
-    //     if (isInParty && socket) {
-    //         socket.emit('videoAction', { sessionId, action: { type, data } });
-    //     }
-    // }
+    function sendVideoAction() {
+        if (isInParty && socket) {
+            socket.emit('videoAction', { sessionId, action: { type, data } });
+        }
+    }
 
     function sendVideoAction() {
         const video = detectVideo();
