@@ -277,6 +277,7 @@ io.on('connection', (socket) => {
 
     socket.on('joinSession', (sessionId) => {
         socket.join(sessionId);
+        console.log(`Client ${socket.id} joined session ${sessionId}`);
     });
 
     // Update the session state when receiving video actions
@@ -289,6 +290,21 @@ io.on('connection', (socket) => {
         socket.to(data.sessionId).emit('videoAction', data.action);
         }
     });
+
+    socket.on('videoAction', (action) => {
+        const video = detectVideo();
+        if (video) {
+            if (action.type === 'play') {
+                video.currentTime = action.data;
+                video.play();
+            } else if (action.type === 'pause') {
+                video.currentTime = action.data;
+                video.pause();
+            } else if (action.type === 'seek') {
+                video.currentTime = action.data;
+            }
+        }
+    });    
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');

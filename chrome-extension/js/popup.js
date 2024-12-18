@@ -41,10 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const isLoggedIn = !!token;
         if (isLoggedIn) {
             const user = parseJWT(token);
-            if (user) {
                 document.getElementById('username').textContent = user.name || 'User';
                 document.getElementById('email').textContent = user.name || 'user@example.com';
-            }
         }
         return isLoggedIn;
     }

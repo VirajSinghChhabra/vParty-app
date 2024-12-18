@@ -29,32 +29,32 @@
         }
     }
 
-    // // Listen for video events 
-    // function setupVideoListeners() {
-    //     const video = detectVideo();
-    //     if (video && !video.hasListeners) {
-    //         video.addEventListener('play', () => sendVideoAction('play'));
-    //         video.addEventListener('pause', () => sendVideoAction('pause'));
-    //         video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
-    //         video.hasListeners = true;
-    //     }
-    // }
-
-    // // Function to send video actions with sessionId
-    // function sendVideoAction() {
-    //     if (isInParty && socket) {
-    //         socket.emit('videoAction', { sessionId, action: { type, data } });
-    //     }
-    // }
-
-    function sendVideoAction() {
-        const video = detectVideo();
-        if (video) {
-            video.addEventListener('play', () => sendVideoAction('play', video.currentTime));
-            video.addEventListener('pause', () => sendVideoAction('pause', video.currentTime));
-            video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
-        }
+    // Function to send video actions with sessionId
+function sendVideoAction(type, data) {
+    if (isInParty && socket) {
+        socket.emit('videoAction', { sessionId, action: { type, data } });
     }
+}
+
+// Listen for video events
+function setupVideoListeners() {
+    const video = detectVideo();
+    if (video && !video.hasListeners) {
+        video.addEventListener('play', () => sendVideoAction('play', video.currentTime));
+        video.addEventListener('pause', () => sendVideoAction('pause', video.currentTime));
+        video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
+        video.hasListeners = true;
+    }
+}
+
+    // function sendVideoAction() {
+    //     const video = detectVideo();
+    //     if (video) {
+    //         video.addEventListener('play', () => sendVideoAction('play', video.currentTime));
+    //         video.addEventListener('pause', () => sendVideoAction('pause', video.currentTime));
+    //         video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
+    //     }
+    // }
 
     // Function to listen for video actions
     function handleVideoAction(action) {
@@ -74,9 +74,13 @@
     
     function connectSocket() {
         socket = io('http://localhost:3000');
+
         socket.on('connect', () => {
             console.log('Connected to server');
+            if (sessionId) {
             socket.emit('joinSession', sessionId);
+            }
+            setupVideoListeners();
         });
     
         socket.on('disconnect', () => {
