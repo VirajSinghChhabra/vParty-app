@@ -241,24 +241,21 @@ app.get('/join/:sessionId', (req, res) => {
 // On session creation, store session state 
 app.post('/session', authenticateToken, (req, res) => {
     const sessionId = uuidv4();
-    const userId = req.user.id;
+    const videoId = req.body.videoId;
 
-    if (sessions[sessionId]) {
-        sessions[sessionId].participants.push(userId);
-        res.json({ 
-            success: true,
-            videoId: sessions[sessionId].videoId,
-            currentTime: sessions[sessionId].currentTime,
-            isPlaying: sessions[sessionId].isPlaying 
-        });
-    } else {
-        res.status(404).json({ success: false, error: 'Session not found' });
-    }
+    sessions[sessionId] = {
+        hostId: req.user.id,
+        videoId: videoId,
+        currentTime: 0, // Initial video time
+        isPlaying: false, // Initial playback state
+        participants: [req.user.id]
+    };
+    res.json({ sessionId, videoId });
 });
 
 // Handle state retrieval for New Users
 app.post('/session/:sessionId/join', authenticateToken, (req, res) => {
-    const sessionId = req.params.sessionId.sessionId;
+    const sessionId = req.params.sessionId;
     const userId = req.user.id;
 
     if (sessions[sessionId]) {
