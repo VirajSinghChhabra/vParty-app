@@ -11,6 +11,17 @@ db.serialize(() => {
             googleId TEXT
             )`);
         });
+    
+        // Create sessions table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS sessions (
+                id TEXT PRIMARY KEY,
+                videoId TEXT,
+                currentTime REAL,
+                isPlaying INTEGER,
+                hostId INTEGER
+            )
+        `);
 
 module.exports = db
 

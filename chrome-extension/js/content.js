@@ -84,7 +84,7 @@ function setupVideoListeners() {
         socket.on('connect', () => {
             console.log('Connected to server');
             if (sessionId) {
-            socket.emit('joinSession', sessionId);
+                socket.emit('joinSession', sessionId);
             }
             // setupVideoListeners();
         });
@@ -96,13 +96,16 @@ function setupVideoListeners() {
     
         socket.io.on('reconnect', (attemptNumber) => {
             console.log(`Reconnected after ${attemptNumber} attempts`);
-            socket.emit('joinSession', sessionId); // Rejoin the session after reconnect
+            if (sessionId) {
+                socket.emit('joinSession', sessionId);
+            }
         });
     
         socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
         socket.on('videoAction', (action) => {
+            console.log('Video action received:', action);
             handleVideoAction(action);
         });
     }
