@@ -50,25 +50,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
     }
 
-    if (message.action === 'joinSession') {
-        fetch(`http://localhost:3000/session/${message.sessionId}/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: sender.tab.id })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                connectSocket(message.sessionId);
-                sendResponse({ success: true, videoId: data.videoId });
-            } else {
-                sendResponse({ success: false, error: data.error });
-            }
-        })
-        .catch(error => sendReponse({ success: false, error: 'Failed to join session' }));
-        return true;
-    }
-
     // Handle video actions
     if (message.action === 'videoAction') {
         if (socket) {

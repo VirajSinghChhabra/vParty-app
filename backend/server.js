@@ -24,7 +24,7 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 // *** CHANGE FOR PRODUCTION - Session storage (use database for production)
-const sessions = {}; // Persisten session state. Note - current implementation is only for 1 session for multiple users. 
+const sessions = {}; // Persisten session state. Note - current implementation is only for for multiple users to join 1 session. 
 
 // Transporter for sending emails (forgot password feature)
 const transporter = nodemailer.createTransport({
@@ -292,21 +292,6 @@ io.on('connection', (socket) => {
         socket.to(data.sessionId).emit('videoAction', data.action);
         }
     });
-
-    // socket.on('videoAction', (action) => {
-    //     const video = detectVideo();
-    //     if (video) {
-    //         if (action.type === 'play') {
-    //             video.currentTime = action.data;
-    //             video.play();
-    //         } else if (action.type === 'pause') {
-    //             video.currentTime = action.data;
-    //             video.pause();
-    //         } else if (action.type === 'seek') {
-    //             video.currentTime = action.data;
-    //         }
-    //     }
-    // });    
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');

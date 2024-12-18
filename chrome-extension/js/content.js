@@ -47,15 +47,6 @@ function setupVideoListeners() {
     }
 }
 
-    // function sendVideoAction() {
-    //     const video = detectVideo();
-    //     if (video) {
-    //         video.addEventListener('play', () => sendVideoAction('play', video.currentTime));
-    //         video.addEventListener('pause', () => sendVideoAction('pause', video.currentTime));
-    //         video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
-    //     }
-    // }
-
     // Function to listen for video actions
     function handleVideoAction(action) {
         const video = detectVideo();
@@ -126,23 +117,34 @@ function setupVideoListeners() {
 
     // Sync state on join (request state from backend)
     function joinSession(sessionId) {
-        fetch(`http://localhost:3000/session/${sessionId}/join`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                syncVideoToState(data.videoId, data.current, data.isPlaying);
-                isInParty = true;
-                connectSocket();
-            } else {
-                console.error('Failed to join session:', data.error);
+        // Retrieve token from Chrome's local storage
+        chrome.storage.local.get(['token'], (result) => {
+            const token = result.token;
+    
+            if (!token) {
+                console.error('No token found. Please log in.');
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error joining session:', error);
-        })
+    
+            // Proceed with the fetch call using the retrieved token
+            fetch(`http://localhost:3000/session/${sessionId}/join`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    syncVideoToState(data.videoId, data.currentTime, data.isPlaying);
+                    isInParty = true;
+                    connectSocket();
+                } else {
+                    console.error('Failed to join session:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error joining session:', error);
+            });
+        });
     }
 
     function syncVideoToState(videoId, currentTime, isPlaying) {
@@ -283,16 +285,6 @@ function setupVideoListeners() {
         });
     }
 
-    // // Sync video state on joining the session
-    // function syncVideoState(videoId) {
-    //     const video = detectVideo();
-    //     if (video) {
-    //         if (videoId) {
-    //             currentVideoId = videoId;
-    //         }
-    //         socket.emit('syncVideoState', { sessionId, videoId: currentVideoId });
-    //     }
-    // }
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
         joinSessionFromStorage();
