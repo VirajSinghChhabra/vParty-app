@@ -72,7 +72,13 @@ function setupVideoListeners() {
         }
     }
     
+    
     function connectSocket() {
+        if (socket) {
+            console.warn('Socket already initialized. Avoiding duplicate connections.');
+            return;
+        }
+
         socket = io('http://localhost:3000');
 
         socket.on('connect', () => {
@@ -80,22 +86,25 @@ function setupVideoListeners() {
             if (sessionId) {
             socket.emit('joinSession', sessionId);
             }
-            setupVideoListeners();
+            // setupVideoListeners();
         });
     
         socket.on('disconnect', () => {
             console.warn('Disconnected from server.');
+            socket = null;
         });
     
         socket.io.on('reconnect', (attemptNumber) => {
             console.log(`Reconnected after ${attemptNumber} attempts`);
-            socket.emit('joinSession', sessionId); // Rejoin the session on reconnect
+            socket.emit('joinSession', sessionId); // Rejoin the session after reconnect
         });
     
         socket.on('connect_error', (error) => {
             console.error('Connection error:', error);
         });
-        socket.on('videoAction', handleVideoAction);
+        socket.on('videoAction', (action) => {
+            handleVideoAction(action);
+        });
     }
 
     // Extract sessionId from invite link and trigger joinSession
@@ -107,6 +116,7 @@ function setupVideoListeners() {
     function joinSessionOnLoad() {
         const sessionId = extractSessionId();
         if (sessionId) {
+            console.log(`Joining session from invite link: ${sessionId}`);
             joinSession(sessionId);
         }
     }
@@ -121,15 +131,26 @@ function setupVideoListeners() {
         .then(data => {
             if (data.success) {
                 syncVideoToState(data.videoId, data.current, data.isPlaying);
+                isInParty = true;
+                connectSocket();
+            } else {
+                console.error('Failed to join session:', data.error);
             }
+        })
+        .catch(error => {
+            console.error('Error joining session:', error);
         })
     }
 
     function syncVideoToState(videoId, currentTime, isPlaying) {
         const video = detectVideo();
         if (video) {
-            video.currentTime = currentTime;
-            isPlaying ? video.play() : video.pause();
+            if (currentVideoId !== videoId) {
+                console.warn('Video mismatch. Ensure you are on the correct page.');
+            } else {
+                video.currentTime = currentTime;
+                isPlaying ? video.play() : video.pause();
+            }
         }
     }
     // Handle party session Start, Join and Disconnect features
@@ -259,24 +280,23 @@ function setupVideoListeners() {
         });
     }
 
-    // Sync video state on joining the session
-    function syncVideoState(videoId) {
-        const video = detectVideo();
-        if (video) {
-            if (videoId) {
-                currentVideoId = videoId;
-            }
-            socket.emit('syncVideoState', { sessionId, videoId: currentVideoId });
-        }
-    }
+    // // Sync video state on joining the session
+    // function syncVideoState(videoId) {
+    //     const video = detectVideo();
+    //     if (video) {
+    //         if (videoId) {
+    //             currentVideoId = videoId;
+    //         }
+    //         socket.emit('syncVideoState', { sessionId, videoId: currentVideoId });
+    //     }
+    // }
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
         joinSessionFromStorage();
         joinSessionOnLoad()
-        // setupVideoListeners();
+        setupVideoListeners();
     });
 
     // Poll every second to check video status
-    setInterval(checkVideoStatus, 1000); // Do I need to add if statement to make sure these checks only run on netflix site 
-    // setInterval(setupVideoListeners, 1000); // and for this when video player is on which means videoIsDetected
+    setInterval(checkVideoStatus, 1000);
 })();

@@ -259,12 +259,13 @@ app.post('/session/:sessionId/join', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
     if (sessions[sessionId]) {
-        sessions[sessionId].participants.push(userId);
+        const session = sessions[sessionId];
+        session.participants.push(userId);
         res.json({ 
             success: true,
-            videoId: sessions[sessionId].videoId,
-            currentTime: sessions[sessionId].currentTime,
-            isPlaying: sessions[sessionId].isPlaying 
+            videoId: session.videoId,
+            currentTime: session.currentTime,
+            isPlaying: session.isPlaying 
         });
     } else {
         res.status(404).json({ success: false, error: 'Session not found' });
@@ -282,29 +283,30 @@ io.on('connection', (socket) => {
 
     // Update the session state when receiving video actions
     socket.on('videoAction', (data) => {
-        if (sessions[data.sessionId]) {
+        const session = sessions[data.sessionId];
+        if (session) {
         // Update the session state with the latest video time and playback status 
-        sessions[data.sessionId].currentTime = data.currentTime;
-        sessions[data.sessionId].isPlaying = data.isPlaying;
+        session.currentTime = data.currentTime;
+        session.isPlaying = data.isPlaying;
         // Broadcast the updated state to all users in the session
         socket.to(data.sessionId).emit('videoAction', data.action);
         }
     });
 
-    socket.on('videoAction', (action) => {
-        const video = detectVideo();
-        if (video) {
-            if (action.type === 'play') {
-                video.currentTime = action.data;
-                video.play();
-            } else if (action.type === 'pause') {
-                video.currentTime = action.data;
-                video.pause();
-            } else if (action.type === 'seek') {
-                video.currentTime = action.data;
-            }
-        }
-    });    
+    // socket.on('videoAction', (action) => {
+    //     const video = detectVideo();
+    //     if (video) {
+    //         if (action.type === 'play') {
+    //             video.currentTime = action.data;
+    //             video.play();
+    //         } else if (action.type === 'pause') {
+    //             video.currentTime = action.data;
+    //             video.pause();
+    //         } else if (action.type === 'seek') {
+    //             video.currentTime = action.data;
+    //         }
+    //     }
+    // });    
 
     socket.on('disconnect', () => {
         console.log('Client disconnected');
