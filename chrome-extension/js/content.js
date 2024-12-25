@@ -1,11 +1,14 @@
 // Testing failed - This is a saving point/commit. Going to consider and try a revamp from using WebSockets to using WebRTC and peer.js for session/room creation, 
 // connection and playback communication. Good luck man. 
 
+import { initializePeer, connectToPeer, sendPeerMessage, setupPeerListeners } from './peer.js';
+
 (function() {
     let currentVideoId = null;
     let isInParty = false;
     let sessionId = null;
     let socket = null;
+    let peerId = null;
 
     // Function to detect if a video is playing
     function detectVideo() {
@@ -42,12 +45,13 @@ function sendVideoAction(type, data) {
 // Listen for video events
 function setupVideoListeners() {
     const video = detectVideo();
-    if (video && !video.hasListeners) {
-        video.addEventListener('play', () => sendVideoAction('play', video.currentTime));
-        video.addEventListener('pause', () => sendVideoAction('pause', video.currentTime));
-        video.addEventListener('seeked', () => sendVideoAction('seek', video.currentTime));
+
+    if (video) {
+        video.addEventListener('play', () => sendPeerMessage('play', video.currentTime));
+        video.addEventListener('pause', () => sendPeerMessage('pause', video.currentTime));
+        video.addEventListener('seeked', () => sendPeerMessage('seek', video.currentTime));
         video.hasListeners = true;
-    }
+    } else return; 
 }
 
     // Function to listen for video actions

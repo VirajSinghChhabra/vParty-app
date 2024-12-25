@@ -18,7 +18,7 @@
     "content_scripts": [
         {
             "matches": ["http://localhost:3000/*", "*://*.netflix.com/*"],
-            "js": ["js/content.js", "js/socket.io.js"]
+            "js": ["js/content.js", "js/socket.io.js", "js/peerjs.min.js"]
         }
     ],
     "host_permissions": [

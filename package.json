@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "nodemailer": "^6.9.15",
-    "socket.io": "^1.5.1",
+    "peerjs": "^1.5.4",
+    "socket.io": "^4.8.1",
     "uuid": "^10.0.0"
   }
 }
