@@ -1,13 +1,10 @@
 // Testing failed - This is a saving point/commit. Going to consider and try a revamp from using WebSockets to using WebRTC and peer.js for session/room creation, 
 // connection and playback communication. Good luck man. 
 
-import { initializePeer, connectToPeer, sendPeerMessage, setupPeerListeners } from './peer.js';
-
 (function() {
     let currentVideoId = null;
     let isInParty = false;
     let sessionId = null;
-    let socket = null;
     let peerId = null;
 
     // Function to detect if a video is playing
@@ -35,77 +32,30 @@ import { initializePeer, connectToPeer, sendPeerMessage, setupPeerListeners } fr
         }
     }
 
-    // Function to send video actions with sessionId
-function sendVideoAction(type, data) {
-    if (isInParty && socket) {
-        socket.emit('videoAction', { sessionId, action: { type, data } });
-    }
-}
+    // Attach video event listeners to sync playback
+    function setupVideoListeners() {
+        const video = detectVideo();
+        if (!video) return;  
 
-// Listen for video events
-function setupVideoListeners() {
-    const video = detectVideo();
-
-    if (video) {
         video.addEventListener('play', () => sendPeerMessage('play', video.currentTime));
         video.addEventListener('pause', () => sendPeerMessage('pause', video.currentTime));
         video.addEventListener('seeked', () => sendPeerMessage('seek', video.currentTime));
-        video.hasListeners = true;
-    } else return; 
-}
-
-    // Function to listen for video actions
-    function handleVideoAction(action) {
-        const video = detectVideo();
-        if (video) {
-            if (action.type === 'play') {
-                video.currentTime = action.data;
-                video.play();
-            } else if (action.type === 'pause') {
-                video.currentTime = action.data;
-                video.pause();
-            } else if (action.type === 'seek') {
-                video.currentTime = action.data;
-            }
-        }
     }
-    
-    
-    function connectSocket() {
-        if (socket) {
-            console.warn('Socket already initialized. Avoiding duplicate connections.');
-            return;
+
+    // Handle incoming messages from peers
+    function handlePeerData(data) {
+        const video = detectVideo();
+        if (!video) return;
+
+        if (data.type === 'play') {
+            video.currentTime = data.data;
+            video.play();
+        } else if (data.type === 'pause') {
+            video.currentTime = data.data;
+            video.pause();
+        } else if (data.type === 'seek') {
+            video.currentTime = data.data;
         }
-
-        socket = io('http://localhost:3000');
-
-        socket.on('connect', () => {
-            console.log('Connected to server');
-            if (sessionId) {
-                socket.emit('joinSession', sessionId);
-            }
-            // setupVideoListeners();
-        });
-    
-        socket.on('disconnect', () => {
-            console.warn('Disconnected from server.');
-            socket = null;
-        });
-    
-        socket.io.on('reconnect', (attemptNumber) => {
-            console.log(`Reconnected after ${attemptNumber} attempts`);
-            if (sessionId) {
-                socket.emit('joinSession', sessionId);
-            }
-        });
-    
-        socket.on('connect_error', (error) => {
-            console.error('Connection error:', error);
-        });
-        socket.on('videoAction', (action) => {
-            console.log('Video action received:', action);
-            handleVideoAction(action);
-        });
     }
 
     // Extract sessionId from invite link and trigger joinSession
@@ -143,7 +93,6 @@ function setupVideoListeners() {
                 if (data.success) {
                     syncVideoToState(data.videoId, data.currentTime, data.isPlaying);
                     isInParty = true;
-                    connectSocket();
                 } else {
                     console.error('Failed to join session:', data.error);
                 }
@@ -182,7 +131,6 @@ function setupVideoListeners() {
                     .then(data => {
                         sessionId = data.sessionId;
                         isInParty = true;
-                        connectSocket();
                         sendResponse({ success: true, sessionId: sessionId, videoId: currentVideoId }); 
                     })
                     .catch(error => sendResponse({ success: false, error: 'Failed to create session' }));
@@ -208,7 +156,6 @@ function setupVideoListeners() {
                         if (data.success) {
                             sessionId = message.sessionId;
                             isInParty = true;
-                            connectSocket();
                             sendResponse({ success: true, videoId: data.videoId });
                         } else {
                             sendResponse({ success: false, error: data.error });
@@ -246,22 +193,18 @@ function setupVideoListeners() {
 
 
     // Listen for login messages from frontend/main.js and forward to background.js
-    window.addEventListener('message', function(event) {
-        if (event.source != window)
-            return;
+    // To ensure the message is coming from the correct source
+    window.addEventListener('message', (event) => {
+        if (event.source != window || event.data.type != 'FROM_PAGE') return;
+        console.log('Content script received: ' + event.data);
 
-        if (event.data.type && (event.data.type == 'FROM_PAGE')) {
-            console.log('Content script received: ' + event.data);
-            // Forward the message to the background script // 
-            // Start code block - ChatGPT help since after multiple nights of debugging (I figured out other login and token related bugs)
-            // I couldn't figure out why the token was not being sent over from login.html local storage to other tabs localstorage.
-            chrome.runtime.sendMessage(event.data, function(response) {
-                console.log('Response from background: ', response);
-                // Send a confirmation back to the page 
-                window.postMessage({ type: 'FROM_EXTENSION', message: 'Token stored successfully' }, '*');
-            });
+        // Forward to background.js
+        if (chrome.runtime.lastError) {
+            console.error('Error sending message to background:', chrome.runtime.lastError.message);
+        } else {
+            console.log('Response from background:', response);
         }
-    }, false);
+    });
 
     // Listen for messages from background.js
     chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
@@ -270,7 +213,6 @@ function setupVideoListeners() {
             window.postMessage({ type: 'FROM_EXTENSION', action: 'tokenStored' }, '*');
         }
     });
-            // End code block - ChatGPT help 
 
     // Join the session from local storage
     function joinSessionFromStorage() {
@@ -287,16 +229,21 @@ function setupVideoListeners() {
                         console.error('Failed to join the session.');
                     }
                 });
-                connectSocket(); // Join the WebSocket session
             }
         });
     }
 
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
+        peerId = new URLSearchParams(window.location.search).get('peerId');
+        if (peerId) {
+            connectToPeer(peerId);
+        }
         joinSessionFromStorage();
         joinSessionOnLoad()
         setupVideoListeners();
+        setupPeerListeners(handlePeerData);
+        console.log('Content script initialized');
     });
 
     // Poll every second to check video status

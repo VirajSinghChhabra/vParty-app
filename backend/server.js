@@ -13,7 +13,6 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const http = require('http');
-const socketIo = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
 
 dotenv.config();
@@ -21,7 +20,6 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 const server = http.createServer(app);
-const io = socketIo(server);
 
 // *** CHANGE FOR PRODUCTION - Session storage (use database for production)
 const sessions = {}; // Persisten session state. Note - current implementation is only for for multiple users to join 1 session. 
@@ -270,32 +268,6 @@ app.post('/session/:sessionId/join', authenticateToken, (req, res) => {
     } else {
         res.status(404).json({ success: false, error: 'Session not found' });
     }
-});
-
-// WebSocket handling
-io.on('connection', (socket) => {
-    console.log('New client connected');
-
-    socket.on('joinSession', (sessionId) => {
-        socket.join(sessionId);
-        console.log(`Client ${socket.id} joined session ${sessionId}`);
-    });
-
-    // Update the session state when receiving video actions
-    socket.on('videoAction', (data) => {
-        const session = sessions[data.sessionId];
-        if (session) {
-        // Update the session state with the latest video time and playback status 
-        session.currentTime = data.currentTime;
-        session.isPlaying = data.isPlaying;
-        // Broadcast the updated state to all users in the session
-        socket.to(data.sessionId).emit('videoAction', data.action);
-        }
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Client disconnected');
-    });
 });
 
 server.listen(port, () => {
