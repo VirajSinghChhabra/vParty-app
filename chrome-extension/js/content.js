@@ -1,3 +1,6 @@
+// Testing failed - This is a saving point/commit. Going to consider and try a revamp from using WebSockets to using WebRTC and peer.js for session/room creation, 
+// connection and playback communication. Good luck man. 
+
 (function() {
     let currentVideoId = null;
     let isInParty = false;
