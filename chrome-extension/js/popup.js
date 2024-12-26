@@ -43,11 +43,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const user = parseJWT(token);
             if (user) {
                 document.getElementById('username').textContent = user.name || 'User';
-                document.getElementById('email').textContent = user.name || 'user@example.com';
+                // document.getElementById('email').textContent = user.email || 'user@example.com';
             } else {
                 console.warn('Invalid token');
             }
         }
+        // Update the UI based on Login state
+        updateUI(isLoggedIn, false, false); // No video or party state at this point
         return isLoggedIn;
     }
 
@@ -70,6 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.storage.local.get(['token'], function(result) {
         if (!result.token) {
             console.warn('No token found in chrome.storage.local');
+            updateUI(false, false, false);
             return;
         }
         console.log('Token found in popup.js:', result.token);
@@ -90,13 +93,16 @@ document.addEventListener('DOMContentLoaded', function() {
         .then((data) => {
             console.log('User data retrieved:', data);
             document.getElementById('username').textContent = data.name || 'User';
-            document.getElementById('email').textContent = data.email || 'user@example.com';
-            updateLoginState(result.token);
+            // document.getElementById('email').textContent = data.email || 'user@example.com';
+
+            const isLoggedIn = updateLoginState(result.token);
+            checkPartyStatusAndUpdateUI(isLoggedIn);
         })
         .catch((error) => {
             console.error('Error fetching user data:', error);
             document.getElementById('username').textContent = 'User';
-            document.getElementById('email').textContent = 'user@example.com';
+            // document.getElementById('email').textContent = 'user@example.com';
+            updateUI(false, false, false);
         });
     });
     
@@ -107,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chrome.storage.local.get(['token'], function(result) {
                 if (!result.token) {
                     console.warn('No token found after tokenStored message');
+                    updateUI(false, false, false);
                     return;
                 }
                 console.log('Token retrieved after storage event:', result.token);
@@ -127,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch((error) => {
                     console.error('Error fetching user data after tokenStored:', error);
+                    updateUI(false, false, false);
                 });
             });
         }
@@ -191,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.storage.local.remove('token', function() {
             console.log('Token removed from storage');
             document.getElementById('username').textContent = 'User';
-            document.getElementById('email').textContent = 'user@example.com';
+            // document.getElementById('email').textContent = 'user@example.com';
             updateUI(false, false, false);
         });
     })
