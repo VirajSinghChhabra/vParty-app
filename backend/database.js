@@ -8,7 +8,7 @@ db.serialize(() => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE,
             password TEXT,
-            googleId TEXT
+            name TEXT
             )`);
         });
     

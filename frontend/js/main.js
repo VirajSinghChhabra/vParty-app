@@ -34,6 +34,7 @@ async function handleRegister(event) {
     const email = form.email.value;
     const password = form.password.value;
     const confirmPassword = form.confirmPassword.value;
+    const name = form.name.value;
 
     if (password !== confirmPassword) {
         alert('Passwords do not match');
@@ -46,7 +47,7 @@ async function handleRegister(event) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, name })
         });
 
         const data = await response.json();

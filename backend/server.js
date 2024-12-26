@@ -34,7 +34,15 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-app.use(cors());
+// Allow requests from the Chrome extension's ID and localhost
+app.use(cors({
+    origin: [
+        'http://localhost:3000', 
+        'chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj>' 
+    ],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(express.urlencoded({ extended: true }));
@@ -45,27 +53,44 @@ app.get('/register', (req, res) => {
 });
 
 // Register route POST method
-app.post('/register', (req,res) => {
-    const { email, password } = req.body;
+app.post('/register', (req, res) => {
+    const { email, password, name } = req.body;
 
-    if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
+    // Validate input
+    if (!email || !password || !name) {
+        return res.status(400).json({ message: 'Email, password and name are required' });
     }
 
-    // Hash the password
-    const hashedPassword = hashPassword(password);
-
-    // Insert new user into the database
-    db.run(
-        `INSERT INTO users (email, password) VALUES (?, ?)`,
-        [email, hashedPassword],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ message: 'Error registering user' });
-            }
-            res.status(201).json({ message: 'User registered successfully' });
+    // Check if the user already exists
+    db.get(`SELECT * FROM users WHERE email = ?`, [email], (err, user) => {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
         }
-    );
+
+        if (user) {
+            return res.status(409).json({ message: 'User already exists' });
+        }
+
+        // Hash the password
+        const hashedPassword = hashPassword(password);
+
+        // Insert the new user
+        db.run(
+            `INSERT INTO users (email, password, name) VALUES (?, ?, ?)`,
+            [email, hashedPassword, name],
+            function (err) {
+                if (err) {
+                    console.error('Error creating user:', err);
+                    return res.status(500).json({ message: 'Internal server error' });
+                }
+
+                // Generate a token for the newly registered user
+                const token = createToken({ id: this.lastID, email, name });
+                res.status(201).json({ token });
+            }
+        );
+    });
 });
 
 // Login route GET method
@@ -77,20 +102,28 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    if (!email || !password ) {
-        return res.status(400).json({ message: 'Email and password are required' }); 
+    // Validate input
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
     }
 
+    // Check if the user exists
     db.get(`SELECT * FROM users WHERE email = ?`, [email], (err, user) => {
-        if (err || !user || !comparePassword(password, user.password)) {
+        if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ message: 'Internal server error' });
+        }
+
+        if (!user || !comparePassword(password, user.password)) {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        // Generate JWT token
-        const token = createToken({ id: user.id, email: user.email });
+        // Generate a token for the existing user
+        const token = createToken({ id: user.id, email: user.email, name: user.name });
         res.status(200).json({ token });
     });
 });
+
 
 // Get user information from the token so popup.js updates
 app.get('/user', authenticateToken, (req, res) => {

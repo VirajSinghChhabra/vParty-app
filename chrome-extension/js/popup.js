@@ -41,8 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const isLoggedIn = !!token;
         if (isLoggedIn) {
             const user = parseJWT(token);
+            if (user) {
                 document.getElementById('username').textContent = user.name || 'User';
                 document.getElementById('email').textContent = user.name || 'user@example.com';
+            } else {
+                console.warn('Invalid token');
+            }
         }
         return isLoggedIn;
     }
@@ -68,31 +72,66 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('No token found in chrome.storage.local');
             return;
         }
-        const isLoggedIn = updateLoginState(result.token);
-        checkPartyStatusAndUpdateUI(isLoggedIn);
-        console.log('Token found in popup.js', result.token);
-
-        // Fetch user information using the token 
-        fetch('http://localhost:3000/login', {
-            
+        console.log('Token found in popup.js:', result.token);
+    
+        // Fetch user information using the token
+        fetch('http://localhost:3000/user', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${result.token}`
+            }
         })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user data: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then((data) => {
+            console.log('User data retrieved:', data);
+            document.getElementById('username').textContent = data.name || 'User';
+            document.getElementById('email').textContent = data.email || 'user@example.com';
+            updateLoginState(result.token);
+        })
+        .catch((error) => {
+            console.error('Error fetching user data:', error);
+            document.getElementById('username').textContent = 'User';
+            document.getElementById('email').textContent = 'user@example.com';
+        });
     });
+    
 
     // Listen for tokenStored message when user logs in (when they were not logged in)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'tokenStored') {
             chrome.storage.local.get(['token'], function(result) {
+                if (!result.token) {
+                    console.warn('No token found after tokenStored message');
+                    return;
+                }
+                console.log('Token retrieved after storage event:', result.token);
                 const isLoggedIn = updateLoginState(result.token);
-                checkPartyStatusAndUpdateUI(isLoggedIn);
+    
+                // Fetch user data to update the UI
+                fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${result.token}`
+                    }
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                    document.getElementById('username').textContent = data.name || 'User';
+                    document.getElementById('email').textContent = data.email || 'user@example.com';
+                    checkPartyStatusAndUpdateUI(isLoggedIn);
+                })
+                .catch((error) => {
+                    console.error('Error fetching user data after tokenStored:', error);
+                });
             });
         }
-
-        // Video selection logic/Start Watch Party button toggle
-        if (message.videoPlaying !== undefined) {
-            updateVideoUI(message.videoPlaying);
-        }
     });
-
+    
     // Check if current tab is Netflix for redirectBtn
     chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
         const currentTab = tabs[0];
@@ -151,6 +190,9 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.removeItem('token');
         chrome.storage.local.remove('token', function() {
             console.log('Token removed from storage');
+            document.getElementById('username').textContent = 'User';
+            document.getElementById('email').textContent = 'user@example.com';
+            updateUI(false, false, false);
         });
     })
 
