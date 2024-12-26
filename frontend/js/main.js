@@ -83,6 +83,7 @@ async function handleLogin(event) {
             localStorage.setItem('token', data.token);
             // Send token to content.js (which will forward it to background.js) to make it available across all tabs
             window.postMessage({ type: 'FROM_PAGE', action: 'storeToken', token: data.token }, '*');
+            console.log('Token sent to content.js:', data.token);
             alert('Login successful');
             form.reset();
         } else {

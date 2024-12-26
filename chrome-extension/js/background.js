@@ -6,18 +6,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'storeToken' && message.token) {
         storedToken = message.token;
 
-        // Store token in Globaly *** NOT - Chrome's local storage 
         chrome.storage.local.set({ token: storedToken }, () => {
-            console.log('Token stored globally');
-            // Broadcast to all tabs
-            chrome.runtime.sendMessage({ action: 'tokenStored', token: storedToken });
-            chrome.tabs.query({}, (tabs) => {
-                tabs.forEach(tab => {
-                    chrome.tabs.sendMessage(tab.id, { action: 'tokenStored', token: storedToken });
-                });
-            });
+            console.log('Token stored in Chrome.storage.local:', storedToken);
+            sendResponse({ success: true });
         });
-        sendResponse({ success: true });
+        return true;
     }
 });
 

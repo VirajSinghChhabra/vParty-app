@@ -63,10 +63,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Initial check for token and session when popup opens
-    chrome.storage.local.get(['token', 'sessionId'], function(result) {
-        currentSessionId = result.sessionId;
+    chrome.storage.local.get(['token'], function(result) {
+        if (!result.token) {
+            console.warn('No token found in chrome.storage.local');
+            return;
+        }
         const isLoggedIn = updateLoginState(result.token);
         checkPartyStatusAndUpdateUI(isLoggedIn);
+        console.log('Token found in popup.js', result.token);
+
+        // Fetch user information using the token 
+        fetch('http://localhost:3000/login', {
+            
+        })
     });
 
     // Listen for tokenStored message when user logs in (when they were not logged in)

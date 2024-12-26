@@ -195,23 +195,17 @@
     // Listen for login messages from frontend/main.js and forward to background.js
     // To ensure the message is coming from the correct source
     window.addEventListener('message', (event) => {
-        if (event.source != window || event.data.type != 'FROM_PAGE') return;
-        console.log('Content script received: ' + event.data);
+        if (event.source !== window || event.data.type !== 'FROM_PAGE') return;
+        console.log('Token received in content.js', event.data.token);
 
         // Forward to background.js
-        if (chrome.runtime.lastError) {
-            console.error('Error sending message to background:', chrome.runtime.lastError.message);
-        } else {
-            console.log('Response from background:', response);
-        }
-    });
-
-    // Listen for messages from background.js
-    chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-        if (request.action === 'tokenStored') {
-            // Forward this message to the page 
-            window.postMessage({ type: 'FROM_EXTENSION', action: 'tokenStored' }, '*');
-        }
+        chrome.runtime.sendMessage(event.data, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Error sending message to background:', chrome.runtime.lastError.message);
+            } else {
+                console.log('Response from background:', response);
+            }
+        })
     });
 
     // Join the session from local storage
@@ -235,6 +229,7 @@
 
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
+        initializePeer();
         peerId = new URLSearchParams(window.location.search).get('peerId');
         if (peerId) {
             connectToPeer(peerId);

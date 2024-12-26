@@ -92,6 +92,23 @@ app.post('/login', (req, res) => {
     });
 });
 
+// Get user information from the token so popup.js updates
+app.get('/user', authenticateToken, (req, res) => {
+    const userId = req.user.id; // Extracted from the token
+
+    db.get(`SELECT id, email, name FROM users WHERE id = ?`, [userId], (err, user) => {
+        if (err || !user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({
+            id: user.id,
+            email: user.email,
+            name: user.name || 'User'
+        });
+    });
+});
+
 // Edit user profile 
 app.put('/edit-profile', authenticateToken, (req, res) => {
     const { email, password } = req.body;
