@@ -162,29 +162,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Start a new watch party 
     startPartyBtn.addEventListener('click', function() {
-        // Initialize PeerJS if not already done
-        if (!peerId) {
-            initializePeer();
-            peer.on('open', (id) => {
-                peerId = id;
-                const inviteLink = `${window.location.origin}?peerId=${peerId}`;
-                inviteLinkInput.value = inviteLink;
+        chrome.runtime.sendMessage({ action: 'startParty' }, (response) => {
+            if (response.success) {
+                inviteLinkInput.value = response.inviteLink;
+                console.log('Party started with invite link:', response.inviteLink);
                 updateUI(true, true, true);
-                console.log('Party started with invite link:', inviteLink);
-            });
-        }
+            } else {
+                console.error('Failed to start party:', response.error);
+            }
+        });
     });
     
 
     // Disconnect from the party function
     disconnectBtn.addEventListener('click', function() {
-        if (peer) {
-            peer.disconnect();
-            peerId = null;
-            updateUI(true, true, false);
-            console.log('Disconnected from the party.');
-        } else {
-            alert('Failed to disconnect from the party. Please try again.');        }
+        chrome.runtime.sendMessage({ action: 'disconnectParty' }, (response) => {
+            if (response.success) {
+                peerId = null;
+                updateUI(true, true, false);
+                console.log('Disconnected from the party.');
+            } else {
+                console.error('Failed to disconnect:', response.error);
+            }
+        });
     });
 
     // Logout button function

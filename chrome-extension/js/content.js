@@ -112,9 +112,6 @@
         console.log('Content script initialized');
     });
 
-    // Poll every second to check video status
-    setInterval(checkVideoStatus, 1000);
-
     // Expose functions to the global scope 
     window.detectVideo = detectVideo;
     window.handlePeerData = handlePeerData;
