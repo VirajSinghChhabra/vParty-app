@@ -61,11 +61,13 @@
     function sendPeerMessage(type, currentTime) {
         if (connection && connection.open) {
             connection.send({ type, currentTime });
-            console.log(`Sent message: ${type} with data: ${currentTime}`);
+            console.log(`Sent message: ${type} at time ${currentTime}`);
         } else {
             console.warn('No open connection to send message');
+            console.log('Connection status:', connection ? connection.open : 'No connection');
         }
     }
+    
 
     // Set up listeners for peer connection 
     function setupPeerListeners(callback) {
@@ -121,26 +123,36 @@
                 console.log('Initializing PeerJS...');
                 initializePeer();
     
+                let responseSent = false;
+    
                 peer.once('open', (id) => {
                     console.log('PeerJS open event triggered');
                     const inviteLink = `${window.location.origin}?peerId=${id}`;
                     console.log('Generated invite link:', inviteLink);
                     sendResponse({ success: true, inviteLink });
-                    console.log('Response sent for startParty:', { success: true, inviteLink });
+                    responseSent = true;
                 });
     
                 peer.on('error', (err) => {
                     console.error('PeerJS Error:', err);
-                    sendResponse({ success: false, error: err.message });
-                    console.log('Response sent for PeerJS error:', { success: false, error: err.message });
+                    if (!responseSent) {
+                        sendResponse({ success: false, error: err.message });
+                    }
                 });
     
-                return true; // Inform Chrome this is an async response
+                setTimeout(() => {
+                    if (!responseSent) {
+                        console.error('PeerJS open event timed out');
+                        sendResponse({ success: false, error: 'PeerJS initialization timeout' });
+                    }
+                }, 5000); // Timeout after 5 seconds
+    
+                return true; // *** Issues about async chrome send messages around this code block 
             } else {
-                console.log('Peer already initialized');
                 sendResponse({ success: false, error: 'Party already started' });
             }
         }
+    
 
         if (message.action === 'disconnectParty') {
             if (peer) {
@@ -194,5 +206,6 @@
 
     // Expose functions to the global scope 
     window.detectVideo = detectVideo;
+    window.initializePeer = initializePeer;
     window.handlePeerData = handlePeerData;
 })();

@@ -175,7 +175,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
+    chrome.runtime.sendMessage({ action: 'getPartyStatus' }, (response) => {
+        console.log('Party status response:', response);
+        if (response && response.isInParty) {
+            updateUI(true, true, true); // Party is active
+        } else {
+            updateUI(true, true, false); // Not in party
+        }
+    });
 
     // Disconnect from the party function
     disconnectBtn.addEventListener('click', function() {
