@@ -18,19 +18,6 @@
         return match ? match[1] : null;
     }
 
-    // Check video status and send video ID if playing 
-    function checkVideoStatus() {
-        const video = detectVideo();
-        const videoId = getVideoId();
-
-        if (video && videoId !== currentVideoId) {
-            currentVideoId = videoId;
-            chrome.runtime.sendMessage({ action: 'videoDetected', videoId: currentVideoId });
-        } else if (!videoId) {
-            chrome.runtime.sendMessage({ action: 'videoNotDetected' });
-        }
-    }
-
     // Attach video event listeners to sync playback
     function setupVideoListeners() {
         const video = detectVideo();
@@ -41,121 +28,52 @@
         video.addEventListener('seeked', () => sendPeerMessage('seek', video.currentTime));
     }
 
-    // Sync state on join (request state from backend)
-    function joinSession(sessionId) {
-        // Retrieve token from Chrome's local storage
-        chrome.storage.local.get(['token'], (result) => {
-            const token = result.token;
-    
-            if (!token) {
-                console.error('No token found. Please log in.');
-                return;
-            }
-    
-            // Proceed with the fetch call using the retrieved token
-            fetch(`http://localhost:3000/session/${sessionId}/join`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    syncVideoToState(data.videoId, data.currentTime, data.isPlaying);
-                    isInParty = true;
-                } else {
-                    console.error('Failed to join session:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error joining session:', error);
-            });
-        });
-    }
-
-    function syncVideoToState(videoId, currentTime, isPlaying) {
+    // Handle data received from a peer
+    function handlePeerData(data) {
         const video = detectVideo();
-        if (video) {
-            if (currentVideoId !== videoId) {
-                console.warn('Video mismatch. Ensure you are on the correct page.');
-            } else {
-                video.currentTime = currentTime;
-                isPlaying ? video.play() : video.pause();
-            }
+        if (!video) return;
+
+        if (data.type === 'play') {
+            video.currentTime = data.currentTime;
+            video.play();
+        } else if (data.type === 'pause') {
+            video.currentTime = data.currentTime;
+            video.pause();
+        } else if (data.type === 'seek') {
+            video.currentTime = data.currentTime;
         }
     }
-    // Handle party session Start, Join and Disconnect features
+
+    // Handle party session Start, Join, Disconnect and Status features
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'startParty') {
-            chrome.storage.local.get(['token'], function(result) {
-                if (result.token) {
-                    fetch('http://localhost:3000/session', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${result.token}`
-                        },
-                        body: JSON.stringify({ videoId: currentVideoId })  
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        sessionId = data.sessionId;
-                        isInParty = true;
-                        sendResponse({ success: true, sessionId: sessionId, videoId: currentVideoId }); 
-                    })
-                    .catch(error => sendResponse({ success: false, error: 'Failed to create session' }));
-                } else {
-                    sendResponse({ success: false, error: 'User not logged in' });
-                }
-            });
+            if (!peer) {
+                initializePeer();
+                peer.on('open', (id) => {
+                    console.log(`Party started with Peer ID: ${id}`);
+                    const inviteLink = `${window.location.origin}?peerId=${id}`;
+                    sendResponse({ success: true, peerId, inviteLink });
+                });
+            } else {
+                sendResponse({ success: false, error: 'Party already started' });
+            }
             return true; 
         }
 
-        if (message.action === 'joinParty') {
-            chrome.storage.local.get(['token'], function(result) {
-                if (result.token) {
-                    fetch(`http://localhost:3000/session/${message.sessionId}/join`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${result.token}`
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            sessionId = message.sessionId;
-                            isInParty = true;
-                            sendResponse({ success: true, videoId: data.videoId });
-                        } else {
-                            sendResponse({ success: false, error: data.error });
-                        }
-                    })
-                    .catch(error => sendResponse({ success: false, error: 'Failed to join session' }));
-                } else {
-                    sendResponse({ success: false, error: 'User not logged in' });
-                }
-            });
-            return true;
-        }
-
         if (message.action === 'disconnectParty') {
-            isInParty = false;
-            sessionId = null;
-            if (socket) {
-                socket.disconnect();
-                socket = null;
+            if (peer) {
+                peer.disconnect();
+                console.log('Disconnected from the party.');
+                sendResponse({ success: true });
+            } else {
+                sendResponse({ success: false, error: 'No active party to disconnect' });
             }
-            sendResponse({ success: true });
-        }
-
-        if (message.action === 'videoAction') {
-            handleVideoAction(message.actionData);
         }
 
         if (message.action === 'getPartyStatus') {
             sendResponse({
                 hasVideo: !!detectVideo(),
-                isInParty: isInParty
+                isInParty: !!(peer && connection && connection.open)
             });
         }
     });
@@ -176,25 +94,6 @@
             }
         })
     });
-
-    // Join the session from local storage
-    function joinSessionFromStorage() {
-        chrome.storage.local.get(['sessionId'], function(result) {
-            if (result.sessionId) {
-                sessionId = result.sessionId;
-                isInParty = true;
-                // Send a join request to background.js and sync video state
-                chrome.runtime.sendMessage({ action: 'joinParty', sessionId }, function(response) {
-                    if (response && response.success) {
-                        console.log('Joined session successfully.');
-                        syncVideoState(response.videoId); // Sync the video state with the session data
-                    } else {
-                        console.error('Failed to join the session.');
-                    }
-                });
-            }
-        });
-    }
 
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
@@ -218,4 +117,5 @@
 
     // Expose functions to the global scope 
     window.detectVideo = detectVideo;
+    window.handlePeerData = handlePeerData;
 })();

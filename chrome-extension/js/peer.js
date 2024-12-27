@@ -9,8 +9,9 @@ function initializePeer() {
     });
 
     peer.on('connection', (conn) => {
+        connection = conn;
         console.log(`Connected to peer: ${conn.peer}`);
-        setupConnectionListeners();
+        setupConnectionListeners(connection);
     });
 
     peer.on('error', (err) => {
@@ -53,25 +54,9 @@ function setupConnectionListeners(conn) {
 function sendPeerMessage(type, currentTime) {
     if (connection && connection.open) {
         connection.send({ type, currentTime });
-        console.log(`Sent action: ${type} with data: ${currentTime}`);
+        console.log(`Sent message: ${type} with data: ${currentTime}`);
     } else {
         console.warn('No open connection to send message');
-    }
-}
-
-// Handle data received from a peer
-function handlePeerData(data) {
-    const video = detectVideo();
-    if (!video) return;
-
-    if (data.type === 'play') {
-        video.currentTime = data.currentTime;
-        video.play();
-    } else if (data.type === 'pause') {
-        video.currentTime = data.currentTime;
-        video.pause();
-    } else if (data.type === 'seek') {
-        video.currentTime = data.currentTime;
     }
 }
 
