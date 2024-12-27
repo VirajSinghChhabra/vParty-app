@@ -80,10 +80,10 @@ function setupPeerListeners(callback) {
     if (connection) {
         connection.on('data', callback);
     }
-}
 
-// Expose functions to the global scope
-window.initializePeer = initializePeer;
-window.connectToPeer = connectToPeer;
-window.sendPeerMessage = sendPeerMessage;
-window.setupConnectionListeners = setupConnectionListeners;
+ // Expose functions to the global scope
+ window.initializePeer = initializePeer;
+ window.connectToPeer = connectToPeer;
+ window.sendPeerMessage = sendPeerMessage;
+ window.setupConnectionListeners = setupConnectionListeners;
+}
