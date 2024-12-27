@@ -22,10 +22,8 @@
                 "*://*.netflix.com/*"
             ],
             "js": [
-                "js/content.js",
-                "js/popup.js",
                 "js/peerjs.min.js",
-                "js/peer.js"
+                "js/content.js"
             ]
         }
     ],
