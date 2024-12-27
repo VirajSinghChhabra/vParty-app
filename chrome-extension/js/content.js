@@ -49,15 +49,15 @@
         if (message.action === 'startParty') {
             if (!peer) {
                 initializePeer();
-                peer.on('open', (id) => {
+                peer.once('open', (id) => {
                     console.log(`Party started with Peer ID: ${id}`);
                     const inviteLink = `${window.location.origin}?peerId=${id}`;
-                    sendResponse({ success: true, peerId, inviteLink });
+                    sendResponse({ success: true, inviteLink });
                 });
+                return true;
             } else {
                 sendResponse({ success: false, error: 'Party already started' });
             }
-            return true; 
         }
 
         if (message.action === 'disconnectParty') {

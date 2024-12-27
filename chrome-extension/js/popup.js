@@ -163,12 +163,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start a new watch party 
     startPartyBtn.addEventListener('click', function() {
         chrome.runtime.sendMessage({ action: 'startParty' }, (response) => {
-            if (response.success) {
+            if (response && response.success) {
                 inviteLinkInput.value = response.inviteLink;
                 console.log('Party started with invite link:', response.inviteLink);
                 updateUI(true, true, true);
             } else {
-                console.error('Failed to start party:', response.error);
+                console.error('Failed to start party:', response?.error || 'No response recieved');
             }
         });
     });
