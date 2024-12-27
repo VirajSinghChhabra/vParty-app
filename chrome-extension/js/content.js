@@ -42,22 +42,6 @@
         video.addEventListener('seeked', () => sendPeerMessage('seek', video.currentTime));
     }
 
-    // Handle incoming messages from peers
-    function handlePeerData(data) {
-        const video = detectVideo();
-        if (!video) return;
-
-        if (data.type === 'play') {
-            video.currentTime = data.data;
-            video.play();
-        } else if (data.type === 'pause') {
-            video.currentTime = data.data;
-            video.pause();
-        } else if (data.type === 'seek') {
-            video.currentTime = data.data;
-        }
-    }
-
     // Extract sessionId from invite link and trigger joinSession
     function extractSessionId() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -230,17 +214,26 @@
     // Run the check when the page is loaded and everytime a video is played/paused
     window.addEventListener('load', () => {
         initializePeer();
+
+        // Connect to a peer if a peer ID is provided in the URL
         peerId = new URLSearchParams(window.location.search).get('peerId');
         if (peerId) {
             connectToPeer(peerId);
         }
-        joinSessionFromStorage();
+        joinSessionFromStorage(); 
         joinSessionOnLoad()
+
+        // Set up video synchronization
         setupVideoListeners();
-        setupPeerListeners(handlePeerData);
+
         console.log('Content script initialized');
     });
 
     // Poll every second to check video status
     setInterval(checkVideoStatus, 1000);
+
+    // Expose functions to the global scope 
+    function detectVideo() { 
+        return document.querySelector('video');
+    }
 })();

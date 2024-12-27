@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isLoggedIn) {
             const user = parseJWT(token);
             if (user) {
-                document.getElementById('username').textContent = user.name || 'User';
+                document.getElementById('username').textContent = user.name || 'Guest';
                 // document.getElementById('email').textContent = user.email || 'user@example.com';
             } else {
                 console.warn('Invalid token');
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then((data) => {
             console.log('User data retrieved:', data);
-            document.getElementById('username').textContent = data.name || 'User';
+            document.getElementById('username').textContent = data.name || 'Guest';
             // document.getElementById('email').textContent = data.email || 'user@example.com';
 
             const isLoggedIn = updateLoginState(result.token);
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch((error) => {
             console.error('Error fetching user data:', error);
-            document.getElementById('username').textContent = 'User';
+            document.getElementById('username').textContent = 'Guest';
             // document.getElementById('email').textContent = 'user@example.com';
             updateUI(false, false, false);
         });
@@ -128,8 +128,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then((response) => response.json())
                 .then((data) => {
-                    document.getElementById('username').textContent = data.name || 'User';
-                    document.getElementById('email').textContent = data.email || 'user@example.com';
+                    document.getElementById('username').textContent = data.name || 'Guest';
+                    //document.getElementById('email').textContent = data.email || 'user@example.com';
                     checkPartyStatusAndUpdateUI(isLoggedIn);
                 })
                 .catch((error) => {
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.removeItem('token');
         chrome.storage.local.remove('token', function() {
             console.log('Token removed from storage');
-            document.getElementById('username').textContent = 'User';
+            document.getElementById('username').textContent = 'Guest';
             // document.getElementById('email').textContent = 'user@example.com';
             updateUI(false, false, false);
         });
