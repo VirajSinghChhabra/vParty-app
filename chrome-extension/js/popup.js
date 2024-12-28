@@ -99,6 +99,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Check connection state (keep it constant so peer can stay "joined" when popup is closed) and
+    // the same invite link is displayed to send to more peers 
+    function checkConnectionState() {
+        chrome.storage.local.get(['connectionState'], function(result) {
+            if (result.connectionState && result.connectionState.isConnected) {
+                // Update UI to show connected state
+                updateUI(true, true, true);
+
+                // If we have an active connection, show the invite link
+                if (result.connectionState.peerId) {
+                    chrome.tabs.query({ active: true, currentWindow: true }, function(response) {
+                        const videoId = getVideoIdFromTab(tabs[0].url);
+                        const time = response?.currentTime || 0;
+                        const inviteLink = `${window.location.origin}/watch/${videoId}?t=${time}&peerId=${result.connectionState.peerId}`;
+                        inviteLinkInput.value = inviteLink;
+                    });
+                }
+            }
+        });
+    }
+
+    // Function to get videoId from the url (in case of joining party)
+    function getVideoIdFromTab(url) {
+        const match = url.match(/watch\/(\d+)/);
+        return match ? match[1] : null;
+    }
+    
     // Initial check for token and session when popup opens
     chrome.storage.local.get(['token'], function(result) {
         if (!result.token) {
@@ -291,4 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         }
     }
+
+    // Call when popup opens
+    checkConnectionState();
 });
