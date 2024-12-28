@@ -55,15 +55,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function checkPartyStatusAndUpdateUI(isLoggedIn) {
         chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+            if (!tabs[0]?.id) {
+                console.warn('No active tab found');
+                updateUI(isLoggedIn, false, false);
+                return;
+            }
+    
             chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
-                if (response) {
-                    updateUI(isLoggedIn, response.hasVideo, response.isInParty);
-                    if (response.isInParty && currentSessionId) {
-                        inviteLinkInput.value = `https://www.netflix.com/watch?sessionId=${currentSessionId}`;
-                    }
-                } else {
+                if (chrome.runtime.lastError) {
+                    console.warn('Error getting party status:', chrome.runtime.lastError);
                     updateUI(isLoggedIn, false, false);
+                    return;
                 }
+                
+                console.log('Received party status:', response);
+                updateUI(isLoggedIn, response?.hasVideo ?? false, response?.isInParty ?? false);
             });
         });
     }
@@ -160,22 +166,34 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: 'http://localhost:3000/login' });
     });
 
-    // Start a new watch party 
+    // Start a new watch party (modified for testing for better error handling)
     startPartyBtn.addEventListener('click', function() {
-        chrome.runtime.sendMessage({ action: 'startParty' }, (response) => {
-            console.log('Received response from content.js:', response);
-            if (response && response.success) {
-                inviteLinkInput.value = response.inviteLink;
-                console.log('Party started with invite link:', response.inviteLink);
-                updateUI(true, true, true);
-            } else {
-                const errorMessage = response?.error || 'No response received';
-                console.error('Failed to start party:', errorMessage);
-                alert(`Failed to start party: ${errorMessage}`);
+        chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+            if (!tabs[0]?.id) {
+                alert('No active tab found');
+                return;
             }
+    
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'startParty' }, function(response) {
+                if (chrome.runtime.lastError) {
+                    console.error('Error starting party:', chrome.runtime.lastError);
+                    alert('Failed to start party: Unable to communicate with the page');
+                    return;
+                }
+    
+                if (response?.success) {
+                    inviteLinkInput.value = response.inviteLink;
+                    updateUI(true, true, true);
+                    console.log('Party started successfully');
+                } else {
+                    const errorMessage = response?.error || 'Unknown error occurred';
+                    console.error('Failed to start party:', errorMessage);
+                    alert(`Failed to start party: ${errorMessage}`);
+                }
+            });
         });
     });
-
+        
     chrome.runtime.sendMessage({ action: 'getPartyStatus' }, (response) => {
         console.log('Party status response:', response);
         if (response && response.isInParty) {
