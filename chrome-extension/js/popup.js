@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
+        console.log('Updating UI with:', { isLoggedIn, hasVideo, isInParty });
+
         // Toggle main views based on login state
         loggedIn.classList.toggle('d-none', !isLoggedIn); // Show logged-in view if user is logged in 
         notLoggedIn.classList.toggle('d-none', isLoggedIn); // Hide "not logged in" view if user is logged in 
@@ -25,10 +27,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update user info visibility 
         userInfo.classList.toggle('d-none', !isLoggedIn); 
 
-        // Handle the start party button visibility and state
-        startPartyBtn.disabled = !isLoggedIn || !hasVideo || isInParty;
-        startPartyBtn.classList.toggle('btn-secondary', !isLoggedIn || !hasVideo || isInParty);
-        startPartyBtn.classList.toggle('btn-primary', isLoggedIn && hasVideo && !isInParty);
+        // Handle the start party button state
+        const canStartParty = isLoggedIn && hasVideo && !isInParty;
+        console.log('Can start party:', canStartParty);
+
+        startPartyBtn.disabled = !canStartParty;
+        startPartyBtn.classList.toggle('btn-secondary', !canStartParty);
+        startPartyBtn.classList.toggle('btn-primary', canStartParty);
 
         // Toggle other elements based on party state
         selectVideoMsg.classList.toggle('d-none', hasVideo);
@@ -54,6 +59,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function checkPartyStatusAndUpdateUI(isLoggedIn) {
+        console.log('Checking party status, isLoggedIn:', isLoggedIn);
+        
         chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
             if (!tabs[0]?.id) {
                 console.warn('No active tab found');
@@ -61,15 +68,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
     
+            console.log('Sending getPartyStatus message to tab:', tabs[0].id);
+            
             chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
                 if (chrome.runtime.lastError) {
                     console.warn('Error getting party status:', chrome.runtime.lastError);
-                    updateUI(isLoggedIn, false, false);
+                    // Testing - If we get an error, try reinjecting the content script
+                    chrome.scripting.executeScript({
+                        target: { tabId: tabs[0].id },
+                        files: ['js/content.js']
+                    }, () => {
+                        if (chrome.runtime.lastError) {
+                            console.error('Failed to inject content script:', chrome.runtime.lastError);
+                            updateUI(isLoggedIn, false, false);
+                        } else {
+                            // Testing - Retry getting party status after injection
+                            setTimeout(() => checkPartyStatusAndUpdateUI(isLoggedIn), 500);
+                        }
+                    });
                     return;
                 }
                 
-                console.log('Received party status:', response);
-                updateUI(isLoggedIn, response?.hasVideo ?? false, response?.isInParty ?? false);
+                console.log('Received party status response:', response);
+                updateUI(
+                    isLoggedIn, 
+                    response?.hasVideo ?? false, 
+                    response?.isInParty ?? false
+                );
             });
         });
     }

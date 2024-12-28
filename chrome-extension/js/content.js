@@ -6,24 +6,26 @@
     let peer = null;
     let connection = null;
 
-    // Make sure PeerJS is loaded before initialization
-    function loadPeerJS() {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js';
-            script.onload = resolve;
-            script.onerror = () => reject(new Error('Failed to load PeerJS'));
-            document.head.appendChild(script);
-        });
+    // Detect if video is playing
+    function detectVideo() {
+        const video = document.querySelector('video');
+        console.log('Video element detected:', !!video);
+        return video;
+    }
+
+    // Get the current video ID 
+    function getVideoId() {
+        const url = window.location.href;
+        const match = url.match(/watch\/(\d+)/);
+        return match ? match[1] : null;
     }
 
     // Initialize peer with error handling
     async function initializePeer() {
         try {
-            await loadPeerJS();
-            console.log('PeerJS loaded successfully');
+            console.log('Initializing PeerJS...');
             
-            // Simple PeerJS initialization for local testing
+            // Create new Peer instance 
             peer = new Peer();
 
             return new Promise((resolve, reject) => {
@@ -99,18 +101,6 @@
             connection.on('data', callback);
         }
     }
-    
-    // Function to detect if a video is playing
-    function detectVideo() {
-        return document.querySelector('video');
-    }
-
-    // Function to get the current video ID 
-    function getVideoId() {
-        const url = window.location.href;
-        const match = url.match(/watch\/(\d+)/);
-        return match ? match[1] : null;
-    }
 
     // Attach video event listeners to sync playback
     function setupVideoListeners() {
@@ -145,7 +135,7 @@
         if (message.action === 'getPartyStatus') {
                 const status = {
                     hasVideo: !!detectVideo(),
-                    isInParty: IsInParty
+                    isInParty: isInParty
                 };
                 console.log('Sending party status:', status);
                 sendResponse(status);
