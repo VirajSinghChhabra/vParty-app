@@ -123,16 +123,13 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then((data) => {
             console.log('User data retrieved:', data);
-            document.getElementById('username').textContent = data.name || 'Guest';
-            // document.getElementById('email').textContent = data.email || 'user@example.com';
+            updateUI(true, true, false); 
 
             const isLoggedIn = updateLoginState(result.token);
             checkPartyStatusAndUpdateUI(isLoggedIn);
         })
         .catch((error) => {
             console.error('Error fetching user data:', error);
-            document.getElementById('username').textContent = 'Guest';
-            // document.getElementById('email').textContent = 'user@example.com';
             updateUI(false, false, false);
         });
     });
@@ -157,11 +154,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Authorization': `Bearer ${result.token}`
                     }
                 })
-                .then((response) => response.json())
+                
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch user data: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then((data) => {
-                    document.getElementById('username').textContent = data.name || 'Guest';
-                    //document.getElementById('email').textContent = data.email || 'user@example.com';
-                    checkPartyStatusAndUpdateUI(isLoggedIn);
+                    console.log('User data retrieved:', data);
+                    updateUI(true, true, false); 
                 })
                 .catch((error) => {
                     console.error('Error fetching user data after tokenStored:', error);
@@ -218,13 +220,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Update UI for peer who is joining a party 
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'partyJoined') {
+            updateUI(true, true, true); 
+            console.log('Joined the party');
+        }
+    });
+    
         
     chrome.runtime.sendMessage({ action: 'getPartyStatus' }, (response) => {
         console.log('Party status response:', response);
-        if (response && response.isInParty) {
-            updateUI(true, true, true); // Party is active
+        if (response) {
+            updateUI(true, response.hasVideo, response.isInParty); 
         } else {
-            updateUI(true, true, false); // Not in party
+            console.error('Failed to fetch party status.');
         }
     });
 

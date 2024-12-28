@@ -57,6 +57,13 @@
         }
 
         connection = peer.connect(peerId);
+
+        connection.on('open', () => {
+            console.log('Connection opened with peer:', peerId);
+            isInParty = true;
+            chrome.runtime.sendMessage({ action: 'partyJoined' }); // Notify popup
+        });
+
         setupConnectionListeners(connection);
     }
 
@@ -135,7 +142,7 @@
         if (message.action === 'getPartyStatus') {
                 const status = {
                     hasVideo: !!detectVideo(),
-                    isInParty: isInParty
+                    isInParty: !!(peer && connection && connection.open),
                 };
                 console.log('Sending party status:', status);
                 sendResponse(status);
@@ -143,10 +150,13 @@
             }
 
         if (message.action === 'startParty') {
-            // Initialize peer and resoind with the party link
+            const video = detectVideo();
+            const videoId = getVideoId();
+            const time = video ? Math.floor(video.currentTime) : 0;
+
             initializePeer()
                 .then(id => {
-                    const inviteLink = `${window.location.origin}?peerId=${id}`;
+                    const inviteLink = `${window.location.origin}/watch/${videoId}?t=${time}&peerId=${id}`;
                     console.log('Party started, invite link:', inviteLink);
                     sendResponse({ success: true, inviteLink });
                 })
@@ -154,8 +164,9 @@
                     console.error('Failed to start party:', error);
                     sendResponse({ success: false, error: error.message });
                 });
-            return true; // Keep the message channel open
+            return true; 
         }
+
     
         if (message.action === 'disconnectParty') {
             if (peer) {
@@ -194,21 +205,27 @@
     window.addEventListener('load', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const peerId = urlParams.get('peerId');
+        const time = parseFloat(urlParams.get('t'));
 
         if (peerId) {
             console.log('Found peer ID in URL, connecing:', peerId);
-            loadPeerJS()
-                .then(() => {
-                    peer = new Peer();
-                    peer.on('open', () => {
-                        console.log('Peer initialized, connecting to:', peerId);
-                        connectToPeer(peerId);
-                    });
-                })
-                .catch(error => {
-                    console.error('Failed to load PeerJS:', error);
-                });
-        }
+
+            initializePeer()
+            .then(() => {
+                connectToPeer(peerId);
+                const video = detectVideo();
+                if (video) {
+                    video.currentTime = time || 0;
+                    video.play();
+                    console.log(`Synced video at time ${time}`);
+                } else {
+                    console.warn('No video element detected to sync');
+                }
+            })
+            .catch(error => {
+                console.error('Failed to initialize PeerJS or connect:', error);
+            });
+    }
         // Set up video synchronization
         setupVideoListeners();
     });
