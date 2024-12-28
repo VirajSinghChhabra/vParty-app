@@ -3,28 +3,48 @@
 
 (function() {
     let isInParty = false;
-    let peerId = null;
     let peer = null;
     let connection = null;
 
-    // Initialize the PeerJs instance
-    function initializePeer() {
-        console.log('initializePeer called'); // For testing 
-        peer = new Peer();
-        peer.on('open', (id) => {
-            console.log(`Peer initialized with ID: ${id}`);
+    // Make sure PeerJS is loaded before initialization
+    function loadPeerJS() {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js';
+            script.onload = resolve;
+            script.onerror = () => reject(new Error('Failed to load PeerJS'));
+            document.head.appendChild(script);
         });
+    }
 
-        peer.on('connection', (conn) => {
-            connection = conn;
-            console.log(`Connected to peer: ${conn.peer}`);
-            setupConnectionListeners(connection);
-        });
+    // Initialize peer with error handling
+    async function initializePeer() {
+        try {
+            await loadPeerJS();
+            console.log('PeerJS loaded successfully');
+            
+            // Simple PeerJS initialization for local testing
+            peer = new Peer();
 
-        peer.on('error', (err) => {
-            console.error('PeerJs initialization error:', err);
-            alert(`PeerJS Error: ${err.message}`);    
-        });
+            return new Promise((resolve, reject) => {
+                peer.on('open', (id) => {
+                    console.log(`Peer initialized with ID: ${id}`);
+                    isInParty = true;
+                    resolve(id);
+                });
+
+                peer.on('error', (err) => {
+                    console.error('PeerJS error:', err);
+                    reject(err);
+                });
+
+                // Set timeout for initialization
+                setTimeout(() => reject(new Error('PeerJS initialization timeout')), 5000);
+            });
+        } catch (error) {
+            console.error('Failed to initialize PeerJS:', error);
+            throw error;
+        }
     }
 
     // Connect to another peer by ID
@@ -38,6 +58,7 @@
         setupConnectionListeners(connection);
     }
 
+    // Setup connection listeners
     function setupConnectionListeners(conn) {
         conn.on('data', (data) => {
             console.log('Received data:', data);
@@ -46,14 +67,17 @@
 
         conn.on('open', () => {
             console.log('Connection opened with peer:', conn.peer);
+            isInParty = true;
         });
 
         conn.on('close', () => {
             console.log('Connection closed with peer:', conn.peer);
+            isInParty = false;
         });
 
         conn.on('error', (err) => {
-            console.error('PeerJS Connection Error:', err);
+            console.error('Connection error:', err);
+            isInParty = false;
         });
     }
 
@@ -116,60 +140,47 @@
 
     // Handle party session Start, Join, Disconnect and Status features
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        console.log('Message received:', message);
-    
-        if (message.action === 'startParty') {
-            if (!peer) {
-                console.log('Initializing PeerJS...');
-                initializePeer();
-    
-                let responseSent = false;
-    
-                peer.once('open', (id) => {
-                    console.log('PeerJS open event triggered');
-                    const inviteLink = `${window.location.origin}?peerId=${id}`;
-                    console.log('Generated invite link:', inviteLink);
-                    sendResponse({ success: true, inviteLink });
-                    responseSent = true;
-                });
-    
-                peer.on('error', (err) => {
-                    console.error('PeerJS Error:', err);
-                    if (!responseSent) {
-                        sendResponse({ success: false, error: err.message });
-                    }
-                });
-    
-                setTimeout(() => {
-                    if (!responseSent) {
-                        console.error('PeerJS open event timed out');
-                        sendResponse({ success: false, error: 'PeerJS initialization timeout' });
-                    }
-                }, 5000); // Timeout after 5 seconds
-    
-                return true; // *** Issues about async chrome send messages around this code block 
-            } else {
-                sendResponse({ success: false, error: 'Party already started' });
-            }
-        }
-    
-
-        if (message.action === 'disconnectParty') {
-            if (peer) {
-                peer.disconnect();
-                console.log('Disconnected from the party.');
-                sendResponse({ success: true });
-            } else {
-                sendResponse({ success: false, error: 'No active party to disconnect' });
-            }
-        }
+        console.log('Message received in content script:', message);
 
         if (message.action === 'getPartyStatus') {
-            sendResponse({
-                hasVideo: !!detectVideo(),
-                isInParty: !!(peer && connection && connection.open)
-            });
+                const status = {
+                    hasVideo: !!detectVideo(),
+                    isInParty: IsInParty
+                };
+                console.log('Sending party status:', status);
+                sendResponse(status);
+                return true; // Keeps the message channel open -- This is important 
+            }
+
+        if (message.action === 'startParty') {
+            // Initialize peer and resoind with the party link
+            initializePeer()
+                .then(id => {
+                    const inviteLink = `${window.location.origin}?peerId=${id}`;
+                    console.log('Party started, invite link:', inviteLink);
+                    sendResponse({ success: true, inviteLink });
+                })
+                .catch(error => {
+                    console.error('Failed to start party:', error);
+                    sendResponse({ success: false, error: error.message });
+                });
+            return true; // Keep the message channel open
         }
+    
+        if (message.action === 'disconnectParty') {
+            if (peer) {
+                peer.destroy();
+                isInParty = false;
+                peer = null;
+                connection = null;
+                console.log('Disconnected from party');
+                sendResponse({ success: true });
+            } else {
+                console.log('No active party to disconnect');
+                sendResponse({ success: false, error: 'No active party to disconnect' });
+            }
+            return true;
+        } 
     });
 
 
@@ -189,19 +200,27 @@
         })
     });
 
-    // Run the check when the page is loaded and everytime a video is played/paused
+    // Check for peer ID in URL when page loads 
     window.addEventListener('load', () => {
-        // Connect to a peer if a peer ID is provided in the URL
-        peerId = new URLSearchParams(window.location.search).get('peerId');
-        if (peerId) {
-            console.log('Connecting to host peer:', peerId);
-            connectToPeer(peerId);
-        }
+        const urlParams = new URLSearchParams(window.location.search);
+        const peerId = urlParams.get('peerId');
 
+        if (peerId) {
+            console.log('Found peer ID in URL, connecing:', peerId);
+            loadPeerJS()
+                .then(() => {
+                    peer = new Peer();
+                    peer.on('open', () => {
+                        console.log('Peer initialized, connecting to:', peerId);
+                        connectToPeer(peerId);
+                    });
+                })
+                .catch(error => {
+                    console.error('Failed to load PeerJS:', error);
+                });
+        }
         // Set up video synchronization
         setupVideoListeners();
-
-        console.log('Content script initialized');
     });
 
     // Expose functions to the global scope 

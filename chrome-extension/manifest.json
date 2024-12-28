@@ -22,13 +22,17 @@
                 "*://*.netflix.com/*"
             ],
             "js": [
-                "js/peerjs.min.js",
                 "js/content.js"
             ]
         }
     ],
     "host_permissions": [
         "*://*.netflix.com/*",
-        "http://localhost:3000/*"
-    ]
+        "http://localhost:3000/*",
+        "https://cdnjs.cloudflare.com/*"
+    ],
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'",
+        "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; object-src 'self'"
+    }
 }
