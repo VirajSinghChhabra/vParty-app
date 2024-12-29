@@ -111,6 +111,22 @@ const WatchPartyState = require('./classes/WatchPartyState.js');
         }
     });
 
+    // Listen for login messages from frontend/main.js and forward to background.js
+    // To ensure the message is coming from the correct source
+    window.addEventListener('message', (event) => {
+        if (event.source !== window || event.data.type !== 'FROM_PAGE') return;
+        console.log('Token received in content.js', event.data.token);
+
+        // Forward to background.js
+        chrome.runtime.sendMessage(event.data, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Error sending message to background:', chrome.runtime.lastError.message);
+            } else {
+                console.log('Response from background:', response);
+            }
+        })
+    });
+
     // Initialize on page load
     window.addEventListener('load', async () => {
         const urlParams = new URLSearchParams(window.location.search);

@@ -38,7 +38,8 @@ async function handleLogin(event) {
             localStorage.setItem('token', data.token);
             window.postMessage({ type: 'FROM_PAGE', action: 'storeToken', token: data.token }, '*');
             alert('Login successful');
-            // *** Maybe add a redirect to home page or update UI
+            
+            // *** Maybe add a redirect to home page or update UI  
         } else {
             alert(`Error: ${data.message}`);
         }

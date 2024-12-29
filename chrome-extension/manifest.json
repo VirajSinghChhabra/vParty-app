@@ -11,8 +11,7 @@
         "scripting"
     ],
     "background": {
-        "service_worker": "background.js",
-        "type": "module"
+        "service_worker": "background.js"
     },
     "action": {
         "default_popup": "popup.html"
@@ -29,8 +28,7 @@
                 "classes/VideoSynchronizer.js",
                 "classes/WatchPartyState.js",
                 "content.js"
-            ],
-            "type": "module"
+            ]
         }
     ],
     "web_accessible_resources": [{
