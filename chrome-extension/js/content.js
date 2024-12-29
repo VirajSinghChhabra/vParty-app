@@ -2,16 +2,9 @@
 // connection and playback communication. Good luck man. 
 
 (function() {
-    let CONNECTION_STATE = {
-        isConnected: false,
-        peerId: null,
-        hostId: null,
-        lastKnownTime: 0
-    };
-
-    // Sync threshold to prevent sync loops 
-    const SYNC_THRESHOLD = 0.5; // seconds
-    let lastSyncTime = 0;
+    let isInParty = false;
+    let peer = null;
+    let connection = null;
 
     // Detect if video is playing
     function detectVideo() {
@@ -32,32 +25,22 @@
         try {
             console.log('Initializing PeerJS...');
             
+            // Create new Peer instance 
             peer = new Peer();
-    
+
             return new Promise((resolve, reject) => {
                 peer.on('open', (id) => {
                     console.log(`Peer initialized with ID: ${id}`);
-                    CONNECTION_STATE.isConnected = true;
-                    CONNECTION_STATE.peerId = id;
-                    // Store connection state
-                    chrome.storage.local.set({ 
-                        connectionState: CONNECTION_STATE 
-                    }, () => {
-                        console.log('Connection state stored');
-                    });
                     isInParty = true;
                     resolve(id);
                 });
-    
+
                 peer.on('error', (err) => {
                     console.error('PeerJS error:', err);
-                    CONNECTION_STATE.isConnected = false;
-                    chrome.storage.local.set({ 
-                        connectionState: CONNECTION_STATE 
-                    });
                     reject(err);
                 });
-    
+
+                // Set timeout for initialization
                 setTimeout(() => reject(new Error('PeerJS initialization timeout')), 5000);
             });
         } catch (error) {
@@ -72,20 +55,15 @@
             console.error('Peer not initialized');
             return;
         }
-    
+
         connection = peer.connect(peerId);
-        CONNECTION_STATE.hostId = peerId;
-    
+
         connection.on('open', () => {
             console.log('Connection opened with peer:', peerId);
-            CONNECTION_STATE.isConnected = true;
-            chrome.storage.local.set({ 
-                connectionState: CONNECTION_STATE 
-            });
             isInParty = true;
-            chrome.runtime.sendMessage({ action: 'partyJoined' });
+            chrome.runtime.sendMessage({ action: 'partyJoined' }); // Notify popup
         });
-    
+
         setupConnectionListeners(connection);
     }
 
@@ -133,76 +111,28 @@
 
     // Attach video event listeners to sync playback
     function setupVideoListeners() {
-    const video = detectVideo();
-    if (!video) return;
+        const video = detectVideo();
+        if (!video) return;  
 
-    // ChatGPT help for debouncedSync, video time sync as I couldn't solve how to sync the videos to the exact time. 
-    // Debounce function to prevent too frequent updates
-    let syncTimeout;
-    const debouncedSync = (type, time) => {
-        clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(() => {
-            sendPeerMessage(type, time);
-        }, 100);
-    };
-
-    video.addEventListener('play', () => {
-        if (Date.now() - lastSyncTime > 1000) { // To prevent duplicate events *** Only for basic implementation, the issue would probably still occur on repetitive events. 
-            debouncedSync('play', video.currentTime);
-            lastSyncTime = Date.now();
-        }
-    });
-
-    video.addEventListener('pause', () => {
-        if (Date.now() - lastSyncTime > 1000) {
-            debouncedSync('pause', video.currentTime);
-            lastSyncTime = Date.now();
-        }
-    });
-
-    video.addEventListener('seeked', () => {
-        debouncedSync('seek', video.currentTime);
-    });
-
-    // Periodic sync check
-    setInterval(() => {
-        if (CONNECTION_STATE.isConnected && video.played) {
-            sendPeerMessage('sync', video.currentTime);
-        }
-    }, 5000); // Checking every 5 seconds 
-}
-
+        video.addEventListener('play', () => sendPeerMessage('play', video.currentTime));
+        video.addEventListener('pause', () => sendPeerMessage('pause', video.currentTime));
+        video.addEventListener('seeked', () => sendPeerMessage('seek', video.currentTime));
+    }
 
     // Handle data received from a peer
     function handlePeerData(data) {
         const video = detectVideo();
         if (!video) return;
-    
-        const timeDiff = Math.abs(video.currentTime - data.currentTime); 
-    
-        switch(data.type) {
-            case 'play':
-                if (timeDiff > SYNC_THRESHOLD) {
-                    video.currentTime = data.currentTime;
-                }
-                video.play();
-                break;
-            case 'pause':
-                if (timeDiff > SYNC_THRESHOLD) {
-                    video.currentTime = data.currentTime;
-                }
-                video.pause();
-                break;
-            case 'seek':
-                video.currentTime = data.currentTime;
-                break;
-            case 'sync':
-                if (timeDiff > SYNC_THRESHOLD) {
-                    video.currentTime = data.currentTime;
-                }
-                break;
+
+        if (data.type === 'play') {
+            video.currentTime = data.currentTime;
+            video.play();
+        } else if (data.type === 'pause') {
+            video.currentTime = data.currentTime;
+            video.pause();
+        } else if (data.type === 'seek') {
+            video.currentTime = data.currentTime;
         }
-    
     }
 
     // Handle party session Start, Join, Disconnect and Status features
@@ -218,13 +148,6 @@
                 sendResponse(status);
                 return true; // Keeps the message channel open -- This is important 
             }
-
-        if (message.action === 'getCurrentTime') {
-            const video = detectVideo();
-            const currentTime = video ? Math.floor(video.currentTime) : 0;
-            sendResponse({ currentTime });
-            return true;
-        }
 
         if (message.action === 'startParty') {
             const video = detectVideo();
@@ -278,26 +201,31 @@
         })
     });
 
-    // Currently, the issue is that after the the host sends an invite link which is joined by another peer, 
-    // the host would naturally click off the popup, which is leading to disconnection between the peers and 
-    // the video sync ofcourse doesn't work because of this. 
-    // *** Test fix 
-    // Connection state recovery in page load 
+    // Check for peer ID in URL when page loads 
     window.addEventListener('load', () => {
-        chrome.storage.local.get(['connectionState'], function(result) {
-            if (result.connectionState && result.connectionState.isConnected) {
-                console.log('Recovering connection state:', result.connectionState);
-                if (result.connectionState.hostId) {
-                    // We were a client, reconnect to host
-                    initializePeer().then(() => {
-                        connectToPeer(result.connectionState.hostId);
-                    });
-                } else if (result.connectionState.peerId) {
-                    // We were a host, reinitialize
-                    initializePeer();
+        const urlParams = new URLSearchParams(window.location.search);
+        const peerId = urlParams.get('peerId');
+        const time = parseFloat(urlParams.get('t'));
+
+        if (peerId) {
+            console.log('Found peer ID in URL, connecing:', peerId);
+
+            initializePeer()
+            .then(() => {
+                connectToPeer(peerId);
+                const video = detectVideo();
+                if (video) {
+                    video.currentTime = time || 0;
+                    video.play();
+                    console.log(`Synced video at time ${time}`);
+                } else {
+                    console.warn('No video element detected to sync');
                 }
-            }
-        });
+            })
+            .catch(error => {
+                console.error('Failed to initialize PeerJS or connect:', error);
+            });
+    }
         // Set up video synchronization
         setupVideoListeners();
     });
