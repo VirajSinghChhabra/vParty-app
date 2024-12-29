@@ -5,6 +5,8 @@
     let isInParty = false;
     let peer = null;
     let connection = null;
+    let lastKnownTime = 0;
+    let isHost = false;
 
     // Detect if video is playing
     function detectVideo() {
@@ -21,33 +23,63 @@
     }
 
     // Initialize peer with error handling
-    async function initializePeer() {
+    async function initializePeer(asHost = false) {
         try {
             console.log('Initializing PeerJS...');
-            
-            // Create new Peer instance 
             peer = new Peer();
-
+            isHost = asHost;
+    
             return new Promise((resolve, reject) => {
                 peer.on('open', (id) => {
                     console.log(`Peer initialized with ID: ${id}`);
                     isInParty = true;
+                    
+                    // Store party state in local storage
+                    chrome.storage.local.set({
+                        partyState: {
+                            isInParty: true,
+                            peerId: id,
+                            isHost: asHost,
+                            lastKnownTime: lastKnownTime
+                        }
+                    });
+    
+                    // If host, also listen for connections
+                    if (asHost) {
+                        peer.on('connection', (conn) => {
+                            connection = conn;
+                            setupConnectionListeners(conn);
+                            
+                            // Send current video state to new peer
+                            const video = detectVideo();
+                            if (video) {
+                                conn.on('open', () => {
+                                    conn.send({
+                                        type: 'sync',
+                                        currentTime: video.currentTime,
+                                        isPlaying: !video.paused
+                                    });
+                                });
+                            }
+                        });
+                    }
+                    
                     resolve(id);
                 });
-
+    
                 peer.on('error', (err) => {
                     console.error('PeerJS error:', err);
+                    isInParty = false;
+                    updatePartyState(false);
                     reject(err);
                 });
-
-                // Set timeout for initialization
-                setTimeout(() => reject(new Error('PeerJS initialization timeout')), 5000);
             });
         } catch (error) {
             console.error('Failed to initialize PeerJS:', error);
             throw error;
         }
     }
+    
 
     // Connect to another peer by ID
     function connectToPeer(peerId) {
@@ -55,16 +87,29 @@
             console.error('Peer not initialized');
             return;
         }
-
+    
         connection = peer.connect(peerId);
-
+    
         connection.on('open', () => {
             console.log('Connection opened with peer:', peerId);
             isInParty = true;
-            chrome.runtime.sendMessage({ action: 'partyJoined' }); // Notify popup
+            updatePartyState(true, peerId);
+            chrome.runtime.sendMessage({ action: 'partyJoined' });
         });
-
+    
         setupConnectionListeners(connection);
+    }
+
+    // To update party state (for popup to maintain state after starting/joining party)
+    function updatePartyState(isActive, peerId = null) {
+        chrome.storage.local.set({
+            partyState: {
+                isInParty: isActive,
+                peerId: peerId,
+                isHost: isHost,
+                lastKnownTime: lastKnownTime
+            }
+        });
     }
 
     // Setup connection listeners
@@ -109,30 +154,84 @@
         }
     }
 
-    // Attach video event listeners to sync playback
-    function setupVideoListeners() {
-        const video = detectVideo();
-        if (!video) return;  
-
-        video.addEventListener('play', () => sendPeerMessage('play', video.currentTime));
-        video.addEventListener('pause', () => sendPeerMessage('pause', video.currentTime));
-        video.addEventListener('seeked', () => sendPeerMessage('seek', video.currentTime));
-    }
-
     // Handle data received from a peer
     function handlePeerData(data) {
         const video = detectVideo();
         if (!video) return;
-
-        if (data.type === 'play') {
+    
+        if (data.type === 'sync') {
+            video.currentTime = data.currentTime;
+            if (data.isPlaying) {
+                video.play();
+            } else {
+                video.pause();
+            }
+            lastKnownTime = data.currentTime;
+        } else if (data.type === 'play') {
             video.currentTime = data.currentTime;
             video.play();
+            lastKnownTime = data.currentTime;
         } else if (data.type === 'pause') {
             video.currentTime = data.currentTime;
             video.pause();
+            lastKnownTime = data.currentTime;
         } else if (data.type === 'seek') {
             video.currentTime = data.currentTime;
+            lastKnownTime = data.currentTime;
         }
+    }
+
+    // Video listeners for updating and syncing playback 
+    function setupVideoListeners() {
+        const video = detectVideo();
+        if (!video) return;
+
+        video.addEventListener('play', () => {
+            lastKnownTime = video.currentTime;
+            sendPeerMessage('play', video.currentTime);
+        });
+
+        video.addEventListener('pause', () => {
+            lastKnownTime = video.currentTime;
+            sendPeerMessage('pause', video.currentTime);
+        });
+
+        video.addEventListener('seeked', () => {
+            lastKnownTime = video.currentTime;
+            sendPeerMessage('seek', video.currentTime);
+        });
+
+        // Add periodic sync for host
+        if (isHost) {
+            setInterval(() => {
+                if (isInParty && connection) {
+                    sendPeerMessage('sync', video.currentTime);
+                }
+            }, 5000); // Sync every 5 seconds
+        }
+    }
+
+    // Function to disconnect from party 
+    // Disconnect handling 
+    function disconnectFromParty() {
+        if (connection) {
+            connection.close();
+        }
+        if (peer) {
+            peer.destroy();
+        }
+
+        isInParty = false;
+        isHost = false;
+        peer = null;
+        connection = null;
+
+        // clear stored party state after disconnecting
+        chrome.storage.local.remove(['partyState'], function() {
+            console.log('Party state cleared');
+        });
+
+        return { success: true };
     }
 
     // Handle party session Start, Join, Disconnect and Status features
@@ -169,19 +268,10 @@
 
     
         if (message.action === 'disconnectParty') {
-            if (peer) {
-                peer.destroy();
-                isInParty = false;
-                peer = null;
-                connection = null;
-                console.log('Disconnected from party');
-                sendResponse({ success: true });
-            } else {
-                console.log('No active party to disconnect');
-                sendResponse({ success: false, error: 'No active party to disconnect' });
-            }
+            const result = disconnectFromParty();
+            sendResponse(result);
             return true;
-        } 
+        }
     });
 
 

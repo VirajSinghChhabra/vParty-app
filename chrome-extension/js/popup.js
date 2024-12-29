@@ -16,30 +16,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let peerId = null; 
     
+    // Function to check the stored party state whenever popup is opened/closed after starting/joining party.
+    // Fix for this issue from last commit as popup kept going back to start watch party stage. 
+    function checkStoredPartyState() {
+        chrome.storage.local.get(['partyState'], function(result) {
+            if (result.partyState?.isInParty) {
+                updateUI(true, true, true);
+
+                // if we're the host, update the invite link
+                if (result.partyState.isHost) {
+                    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                        const videoId = tabs[0].url.match(/watch\/(\d+)/)[1];
+                        const inviteLink = `${tabs[0].url.split('?')[0]}?t=${result.partyState.lastKnownTime}&peerId=${result.partyState.peerId}`;
+                        inviteLinkInput.value = inviteLink;
+                    });
+                }
+            }
+        });
+    }
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
         console.log('Updating UI with:', { isLoggedIn, hasVideo, isInParty });
-
-        // Toggle main views based on login state
-        loggedIn.classList.toggle('d-none', !isLoggedIn); // Show logged-in view if user is logged in 
-        notLoggedIn.classList.toggle('d-none', isLoggedIn); // Hide "not logged in" view if user is logged in 
-
-        // Update user info visibility 
-        userInfo.classList.toggle('d-none', !isLoggedIn); 
-
-        // Handle the start party button state
+    
+        loggedIn.classList.toggle('d-none', !isLoggedIn);
+        notLoggedIn.classList.toggle('d-none', isLoggedIn);
+        userInfo.classList.toggle('d-none', !isLoggedIn);
+    
         const canStartParty = isLoggedIn && hasVideo && !isInParty;
-        console.log('Can start party:', canStartParty);
-
+        
         startPartyBtn.disabled = !canStartParty;
         startPartyBtn.classList.toggle('btn-secondary', !canStartParty);
         startPartyBtn.classList.toggle('btn-primary', canStartParty);
-
-        // Toggle other elements based on party state
+    
         selectVideoMsg.classList.toggle('d-none', hasVideo);
         inviteSection.classList.toggle('d-none', !isInParty);
         disconnectBtn.classList.toggle('d-none', !isInParty);
         startPartyBtn.classList.toggle('d-none', isInParty);
+    
+        // Store UI state
+        chrome.storage.local.set({ 
+            uiState: { isLoggedIn, hasVideo, isInParty }
+        });
     }
 
     function updateLoginState(token) {
@@ -134,6 +151,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // To check party state after login
+    checkStoredPartyState();
 
     // Listen for tokenStored message when user logs in (when they were not logged in)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -241,14 +260,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Disconnect from the party function
     disconnectBtn.addEventListener('click', function() {
-        chrome.runtime.sendMessage({ action: 'disconnectParty' }, (response) => {
-            if (response.success) {
-                peerId = null;
-                updateUI(true, true, false);
-                console.log('Disconnected from the party.');
-            } else {
-                console.error('Failed to disconnect:', response.error);
-            }
+        chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'disconnectParty' }, function(response) {
+                if (response?.success) {
+                    updateUI(true, true, false);
+                    chrome.storage.local.remove(['partyState']);
+                } else {
+                    console.error('Failed to disconnect:', response?.error);
+                }
+            });
         });
     });
 
