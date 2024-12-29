@@ -6,9 +6,9 @@
 // Calm down. I can do this. Good luck. 
 
 // content.js
-import { Room } from './classes/Room.js';
-import { VideoSynchronizer } from './classes/VideoSynchronizer.js';
-import { WatchPartyState } from './classes/WatchPartyState.js';
+const Room = require('./classes/Room.js');
+const VideoSynchronizer = require('./classes/VideoSynchronizer.js');
+const WatchPartyState = require('./classes/WatchPartyState.js');
 
 (() => {
     let room = null;

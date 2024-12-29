@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const createAccBtn = document.getElementById('create-account-btn');
-    const loginBtn = document.getElementById('login-btn');
+    const loginSignUpBtn = document.getElementById('login-sign-up-btn');
     const userInfo = document.getElementById('user-info');
     const loggedIn = document.getElementById('logged-in');
     const notLoggedIn = document.getElementById('not-logged-in');
@@ -209,14 +208,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Create Account button event
-    createAccBtn.addEventListener('click', function() {
-        chrome.tabs.create({ url: 'http://localhost:3000/register' });
-    });
-
-    // Login button event
-    loginBtn.addEventListener('click', function() {
-        chrome.tabs.create({ url: 'http://localhost:3000/login' });
+    // Login / Sign up button event
+    loginSignUpBtn.addEventListener('click', function() {
+        chrome.tabs.create({ url: 'http://localhost:3000/settings' });
     });
 
     // Start a new watch party (modified for testing for better error handling)

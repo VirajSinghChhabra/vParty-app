@@ -44,15 +44,16 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(express.urlencoded({ extended: true }));
 
-// // Register route GET method
-// app.get('/register', (req, res) => {
-//     res.sendFile(path.join(__dirname, '../frontend/pages/register.html'));
-// });
+// Register route GET method
+app.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/settings.html'));
+});
 
 // Register route POST method
 app.post('/register', (req, res) => {
     const { name, email, password } = req.body;
 
+    // Validate input
     if (!name || !email || !password) {
         return res.status(400).json({ message: 'Name, email, and password are required' });
     }
@@ -82,22 +83,18 @@ app.post('/register', (req, res) => {
                 }
 
                 // Generate a token for the newly registered user
-                const token = createToken({ id: this.lastID, name, email });
+                const token = createToken({ id: this.lastID, email, name });
                 res.status(201).json({ token });
             }
         );
     });
 });
 
-// // Login route GET method
-// app.get('/login', (req, res) => {
-//     res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
-// });
-
 // Login route POST method
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
+    // Validate input
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required' });
     }
@@ -114,7 +111,7 @@ app.post('/login', (req, res) => {
         }
 
         // Generate a token for the existing user
-        const token = createToken({ id: user.id, name: user.name, email: user.email });
+        const token = createToken({ id: user.id, email: user.email, name: user.name });
         res.status(200).json({ token });
     });
 });
@@ -181,7 +178,7 @@ app.post('/forgot-password', (req, res) => {
 
     // Generate a unique reset token then store it plus the expiry date in the db
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = Date.now() + 360000; // 1hr reset time 
+    const resetTokenExpiry = Date.now() + 3600000; // 1hr reset time 
 
     db.run(
         `UPDATE users SET resetToken = ?, resetTokenExpiry = ? WHERE email = ?`,
@@ -192,23 +189,16 @@ app.post('/forgot-password', (req, res) => {
             }
 
             // Send email with the reset link 
-            // *** IMPORTANT Change link for production ***
             const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
             const mailOptions = {
                 from: process.env.EMAIL_USER,
                 to: email, 
                 subject: 'Password Reset Request',
                 html: `
-                <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
-                    <h2>Password Reset Request</h2>
-                    <p>You requested a password reset. Please click the link below to reset your password:</p>
-                    <a href="${resetLink}" 
-                       style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                       Reset Password
-                    </a>
-                    <p>If you did not request this, please ignore this email.</p>
-                </div>
-            `            
+                <p>You requested a password reset. Please click the link below to reset your password:</p>
+                <a href="${resetLink}">Reset Password</a>
+                <p>If you did not request this, please ignore this email.</p>
+                `
             };
 
             transporter.sendMail(mailOptions, (err, info) => {
@@ -220,6 +210,7 @@ app.post('/forgot-password', (req, res) => {
         }
     );
 });
+
 
 // Route to reset password 
 app.post('/reset-password', (req, res) => {

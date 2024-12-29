@@ -11,7 +11,7 @@
         "scripting"
     ],
     "background": {
-        "service_worker": "js/background.js",
+        "service_worker": "background.js",
         "type": "module"
     },
     "action": {

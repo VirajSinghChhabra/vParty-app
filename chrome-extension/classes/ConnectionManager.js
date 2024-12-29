@@ -1,4 +1,4 @@
-export class ConnectionManager {
+class ConnectionManager {
     constructor(room) {
         this.room = room;
         this.reconnectAttempts = 0;

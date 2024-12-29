@@ -1,6 +1,6 @@
 // Watch party state storage stuff from content.js 
 // export to content.js for use
-export class WatchPartyState {
+class WatchPartyState {
     constructor() {
         this.stateKey = 'watchPartyState';
     }

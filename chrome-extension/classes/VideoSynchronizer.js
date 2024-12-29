@@ -1,6 +1,6 @@
 // Shifting all video sync related things into this file for better clarity and error handling.
 // Use type: module to export/import functions between files. 
-export class VideoSynchronizer {
+class VideoSynchronizer {
     constructor(video, room) {
         this.video = video;
         this.room = room;
