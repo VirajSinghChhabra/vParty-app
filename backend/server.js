@@ -21,9 +21,6 @@ const app = express();
 const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-// *** CHANGE FOR PRODUCTION - Session storage (use database for production)
-const sessions = {}; // Persisten session state. Note - current implementation is only for for multiple users to join 1 session. 
-
 // Transporter for sending emails (forgot password feature)
 const transporter = nodemailer.createTransport({
     host: "sandbox.smtp.mailtrap.io",
@@ -47,18 +44,17 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(express.urlencoded({ extended: true }));
 
-// Register route GET method
-app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/register.html'));
-});
+// // Register route GET method
+// app.get('/register', (req, res) => {
+//     res.sendFile(path.join(__dirname, '../frontend/pages/register.html'));
+// });
 
 // Register route POST method
 app.post('/register', (req, res) => {
-    const { email, password, name } = req.body;
+    const { name, email, password } = req.body;
 
-    // Validate input
-    if (!email || !password || !name) {
-        return res.status(400).json({ message: 'Email, password and name are required' });
+    if (!name || !email || !password) {
+        return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
     // Check if the user already exists
@@ -77,8 +73,8 @@ app.post('/register', (req, res) => {
 
         // Insert the new user
         db.run(
-            `INSERT INTO users (email, password, name) VALUES (?, ?, ?)`,
-            [email, hashedPassword, name],
+            `INSERT INTO users (name, email, password) VALUES (?, ?, ?)`,
+            [name, email, hashedPassword],
             function (err) {
                 if (err) {
                     console.error('Error creating user:', err);
@@ -86,23 +82,22 @@ app.post('/register', (req, res) => {
                 }
 
                 // Generate a token for the newly registered user
-                const token = createToken({ id: this.lastID, email, name });
+                const token = createToken({ id: this.lastID, name, email });
                 res.status(201).json({ token });
             }
         );
     });
 });
 
-// Login route GET method
-app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
-});
+// // Login route GET method
+// app.get('/login', (req, res) => {
+//     res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
+// });
 
 // Login route POST method
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required' });
     }
@@ -119,7 +114,7 @@ app.post('/login', (req, res) => {
         }
 
         // Generate a token for the existing user
-        const token = createToken({ id: user.id, email: user.email, name: user.name });
+        const token = createToken({ id: user.id, name: user.name, email: user.email });
         res.status(200).json({ token });
     });
 });
@@ -144,32 +139,29 @@ app.get('/user', authenticateToken, (req, res) => {
 
 // Edit user profile 
 app.put('/edit-profile', authenticateToken, (req, res) => {
-    const { email, password } = req.body;
-    // Get user id from token 
+    const { name, email } = req.body;
     const userId = req.user.id;
 
-    if (!email && !password) {
-        return res.status(400).json({ message: 'Email or password must be provided to update' });
+    if (!name && !email) {
+        return res.status(400).json({ message: 'Name or email must be provided to update' });
     }
 
     let query = `UPDATE users SET `;
     const queryParams = [];
 
+    if (name) {
+        query += `name = ? `;
+        queryParams.push(name);
+    }
+
     if (email) {
+        if (name) query += `, `;
         query += `email = ? `;
         queryParams.push(email);
     }
 
-    // Wasn't handling both email and password update correctly, asked ChatGPT.
-    if (password) {
-        if (email) query += `, `; 
-        const hashedPassword = hashPassword(password);
-        query += `password = ? `;
-        queryParams.push(hashedPassword);
-    }
-
     query += `WHERE id = ?`;
-    queryParams.push(userId)
+    queryParams.push(userId);
 
     db.run(query, queryParams, function (err) {
         if (err) {
@@ -263,61 +255,22 @@ app.post('/reset-password', (req, res) => {
     );
 });
 
-// Delete user profile 
-app.delete('/delete-profile', authenticateToken, (req, res) => {
-    // Get user id from token 
-    const userId = req.user.id;
+// // Delete user profile 
+// app.delete('/delete-profile', authenticateToken, (req, res) => {
+//     // Get user id from token 
+//     const userId = req.user.id;
 
-    db.run(`DELETE FROM users WHERE id = ?`, [userId], function (err) {
-        if (err) {
-            return res.status(500).json({ message: 'Error deleting profile'});
-        }
-        res.status(200).json({ message: 'User profile deleted successfully'});
-    });
-});
+//     db.run(`DELETE FROM users WHERE id = ?`, [userId], function (err) {
+//         if (err) {
+//             return res.status(500).json({ message: 'Error deleting profile'});
+//         }
+//         res.status(200).json({ message: 'User profile deleted successfully'});
+//     });
+// });
 
 // Protected route
 app.get('/protected', authenticateToken, (req, res) => {
     res.status(200).json({ message: 'This is a protected route' });
-});
-
-// Routes for Watch party session management 
-app.get('/join/:sessionId', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/pages/join.html'));
-});
-
-// On session creation, store session state 
-app.post('/session', authenticateToken, (req, res) => {
-    const sessionId = uuidv4();
-    const videoId = req.body.videoId;
-
-    sessions[sessionId] = {
-        hostId: req.user.id,
-        videoId: videoId,
-        currentTime: 0, // Initial video time
-        isPlaying: false, // Initial playback state
-        participants: [req.user.id]
-    };
-    res.json({ sessionId, videoId });
-});
-
-// Handle state retrieval for New Users
-app.post('/session/:sessionId/join', authenticateToken, (req, res) => {
-    const sessionId = req.params.sessionId;
-    const userId = req.user.id;
-
-    if (sessions[sessionId]) {
-        const session = sessions[sessionId];
-        session.participants.push(userId);
-        res.json({ 
-            success: true,
-            videoId: session.videoId,
-            currentTime: session.currentTime,
-            isPlaying: session.isPlaying 
-        });
-    } else {
-        res.status(404).json({ success: false, error: 'Session not found' });
-    }
 });
 
 server.listen(port, () => {
