@@ -23,10 +23,29 @@
         return match ? match[1] : null;
     }
 
+    // Parse URL parameters to check for party invite
+    function checkForPartyInvite() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const peerId = urlParams.get('peerId');
+        const timestamp = urlParams.get('t');
+        
+        if (peerId) {
+            console.log('Found party invite in URL, connecting to:', peerId);
+            lastKnownTime = parseInt(timestamp) || 0;
+            
+            // Initialize as guest and connect
+            initializePeer(false).then(() => {
+                connectToPeer(peerId);
+            }).catch(err => {
+                console.error('Failed to join party:', err);
+            });
+        }
+    }
+
     // Initialize peer with error handling
     async function initializePeer(asHost = false) {
         try {
-            console.log('Initializing PeerJS...');
+            console.log('Initializing PeerJS...', asHost ? 'as host' : 'as guest');
             peer = new Peer();
             isHost = asHost;
     
@@ -36,7 +55,6 @@
                     isInParty = true;
                     partyPeerId = id;
     
-                    // Need to persist party state issue
                     const partyState = {
                         isInParty: true,
                         peerId: id,
@@ -74,12 +92,6 @@
                     isInParty = false;
                     updatePartyState(false);
                     reject(err);
-                });
-    
-                // Disconnect handler to reconnect again when popup is closed and reopened when in party
-                peer.on('disconnected', () => {
-                    console.log('Peer disconnected');
-                    peer.reconnect();
                 });
             });
         } catch (error) {
@@ -303,8 +315,12 @@
         })
     });
 
-    // Check for peer ID in URL when page loads 
+    // Check for peer ID in URL and for party invite in URL  when page loads 
     window.addEventListener('load', () => {
+        // First check for party invite in URL
+        checkForPartyInvite();
+
+        // Then check stored party state
         chrome.storage.local.get(['partyState'], (result) => {
             if (result.partyState?.isInParty && !connection?.open) {
                 console.log('Attempting to reconnect to party...');
@@ -317,7 +333,7 @@
                 }
             }
         });
-        // Set up video synchronization
+        
         setupVideoListeners();
     });
 
