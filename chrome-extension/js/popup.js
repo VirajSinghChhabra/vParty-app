@@ -78,40 +78,47 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkPartyStatusAndUpdateUI(isLoggedIn) {
         console.log('Checking party status, isLoggedIn:', isLoggedIn);
         
-        chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
-            if (!tabs[0]?.id) {
-                console.warn('No active tab found');
-                updateUI(isLoggedIn, false, false);
+        chrome.storage.local.get(['partyState'], function(result) {
+            const storedPartyState = result.partyState;
+            
+            if (storedPartyState?.isInParty) {
+                console.log('Found stored party state:', storedPartyState);
+                updateUI(isLoggedIn, true, true);
+                
+                // If we're the host, make sure the invite link is available
+                if (storedPartyState.isHost && storedPartyState.peerId) {
+                    chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+                        if (tabs[0]?.url) {
+                            const inviteLink = `${tabs[0].url.split('?')[0]}?t=${storedPartyState.lastKnownTime}&peerId=${storedPartyState.peerId}`;
+                            inviteLinkInput.value = inviteLink;
+                        }
+                    });
+                }
                 return;
             }
     
-            console.log('Sending getPartyStatus message to tab:', tabs[0].id);
-            
-            chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
-                if (chrome.runtime.lastError) {
-                    console.warn('Error getting party status:', chrome.runtime.lastError);
-                    // Testing - If we get an error, try reinjecting the content script
-                    chrome.scripting.executeScript({
-                        target: { tabId: tabs[0].id },
-                        files: ['js/content.js']
-                    }, () => {
-                        if (chrome.runtime.lastError) {
-                            console.error('Failed to inject content script:', chrome.runtime.lastError);
-                            updateUI(isLoggedIn, false, false);
-                        } else {
-                            // Testing - Retry getting party status after injection
-                            setTimeout(() => checkPartyStatusAndUpdateUI(isLoggedIn), 500);
-                        }
-                    });
+            // If no stored state, check current status
+            chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
+                if (!tabs[0]?.id) {
+                    console.warn('No active tab found');
+                    updateUI(isLoggedIn, false, false);
                     return;
                 }
                 
-                console.log('Received party status response:', response);
-                updateUI(
-                    isLoggedIn, 
-                    response?.hasVideo ?? false, 
-                    response?.isInParty ?? false
-                );
+                chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
+                    if (chrome.runtime.lastError) {
+                        console.warn('Error getting party status:', chrome.runtime.lastError);
+                        updateUI(isLoggedIn, false, false);
+                        return;
+                    }
+                    
+                    console.log('Received party status response:', response);
+                    updateUI(
+                        isLoggedIn, 
+                        response?.hasVideo ?? false, 
+                        response?.isInParty ?? false
+                    );
+                });
             });
         });
     }
@@ -220,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
     
-            chrome.tabs.sendMessage(tabs[0].id, { action: 'startParty' }, function(response) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'startParty', asHost: true }, function(response) {
                 if (chrome.runtime.lastError) {
                     console.error('Error starting party:', chrome.runtime.lastError);
                     alert('Failed to start party: Unable to communicate with the page');
