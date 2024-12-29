@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch((error) => {
             console.error('Error fetching user data:', error);
+            chrome.storage.local.remove('token');
             updateUI(false, false, false);
         });
     });

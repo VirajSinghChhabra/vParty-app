@@ -11,10 +11,10 @@
         "scripting"
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "./background.js"
     },
     "action": {
-        "default_popup": "popup.html"
+        "default_popup": "./popup.html"
     },
     "content_scripts": [
         {
@@ -23,20 +23,23 @@
                 "*://*.netflix.com/*"
             ],
             "js": [
-                "js/peerjs.min.js",
-                "classes/Room.js",
-                "classes/VideoSynchronizer.js",
-                "classes/WatchPartyState.js",
-                "content.js"
+                "./js/peerjs.min.js",
+                "./classes/Room.js",
+                "./classes/VideoSynchronizer.js",
+                "./classes/WatchPartyState.js",
+                "./classes/ConnectionManager.js",
+                "./content.js"
             ]
         }
     ],
-    "web_accessible_resources": [{
-    "resources": [
-      "*.js"
+    "web_accessible_resources": [
+        {
+            "resources": [
+                    "*./js"
+            ],
+            "matches": ["<all_urls>"]
+        }
     ],
-    "matches": ["<all_urls>"]
-  }],
     "host_permissions": [
         "*://*.netflix.com/*",
         "http://localhost:3000/*"
