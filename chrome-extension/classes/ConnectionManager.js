@@ -27,11 +27,17 @@ class ConnectionManager {
         this.reconnectAttempts++;
         
         try {
+            let newRoom;
             if (this.room.isHost) {
-                await Room.create();
+                console.log('Recreating room as host...');
+                newRoom = await Room.create();
             } else {
-                await Room.join(this.room.peerId);
+                console.log(`Rejoining room with peer ID: ${this.room.peerId}`);
+                newRoom = await Room.join(this.room.peerId);
             }
+
+            this.room = newRoom; // Update to the new room instance
+            this.setupConnectionHandlers(); // Rebind handlers to the new room
         } catch (error) {
             console.error('Reconnection attempt failed:', error);
             this.handleDisconnection();

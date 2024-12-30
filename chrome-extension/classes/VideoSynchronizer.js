@@ -1,84 +1,65 @@
 // Shifting all video sync related things into this file for better clarity and error handling.
-// Use type: module to export/import functions between files. 
 class VideoSynchronizer {
-    constructor(video, room) {
-        this.video = video;
+    constructor(videoPlayer, room) {
+        this.videoPlayer = videoPlayer; 
         this.room = room;
-        this.syncThreshold = 0.5;
-        this.lastSyncedTime = 0;
+
         this.setupListeners();
     }
 
     setupListeners() {
+        // Video event listeners
         this.video.addEventListener('play', () => this.handleVideoPlay());
         this.video.addEventListener('pause', () => this.handleVideoPause());
         this.video.addEventListener('seeked', () => this.handleVideoSeeked());
 
-        this.room.on('data', (data) => this.handlePeerMessage(data));
+        // Room event listeners
+        this.room.on('play', (currentTime) => this.syncAndPlay(currentTime));
+        this.room.on('pause', (currentTime) => this.syncAndPause(currentTime));
+        this.room.on('seeked', (currentTime) => this.syncTime(currentTime));
 
         // Periodic sync check
         setInterval(() => this.checkSync(), 5000);
     }
 
     handleVideoPlay() {
-        if (!this.room.isConnected) return;
-        this.room.send({
-            type: 'play',
-            currentTime: this.video.currentTime
-        });
+        this.room.sendCommand('PLAY', { currentTime: this.videoPlayer.getCurrentTime() });
     }
 
     handleVideoPause() {
-        if (!this.room.isConnected) return;
-        this.room.send({
-            type: 'pause',
-            currentTime: this.video.currentTime
-        });
+        this.room.sendCommand('PAUSE', { currentTime: this.videoPlayer.getCurrentTime() });
     }
 
     handleVideoSeeked() {
-        if (!this.room.isConnected) return;
-        this.room.send({
-            type: 'seek',
-            currentTime: this.video.currentTime
-        });
+        this.room.sendCommand('SEEKED', { currentTime: this.videoPlayer.getCurrentTime() });
     }
 
-    handlePeerMessage(data) {
-        switch (data.type) {
-            case 'play':
-                this.syncAndPlay(data.currentTime);
-                break;
-            case 'pause':
-                this.syncAndPause(data.currentTime);
-                break;
-            case 'seek':
-                this.syncTime(data.currentTime);
-                break;
-        }
-    }
-
+    // Syc times for video events 
     syncAndPlay(targetTime) {
         this.syncTime(targetTime);
-        this.video.play();
+        this.videoPlayer.play();
     }
 
     syncAndPause(targetTime) {
         this.syncTime(targetTime);
-        this.video.pause();
+        this.videoPlayer.pause();
     }
 
     syncTime(targetTime) {
-        if (Math.abs(this.video.currentTime - targetTime) > this.syncThreshold) {
-            this.video.currentTime = targetTime;
+        if (Math.abs(this.videoPlayer.getCurrentTime() - targetTime) > 0.5) {
+            this.videoPlayer.seek(targetTime);
         }
-        this.lastSyncedTime = targetTime;
     }
 
+    // Also periodically sync video current times in case someone is left behind/new person joins
+    // Although note for self - current implementation lets multiple users join, I think this setup is better for 1 to 1 watch sessions
+    // Hopefully these checks don't crash netflix 
     checkSync() {
-        if (!this.room.isConnected) return;
-        
+        if (!this.room.connectionOpen) return;
+
+        // Send periodic sync updates
         if (Math.abs(this.video.currentTime - this.lastSyncedTime) > this.syncThreshold) {
+            console.log('Periodic sync detected; sending seek command...');
             this.handleVideoSeeked();
         }
     }

@@ -35,9 +35,13 @@
     "web_accessible_resources": [
         {
             "resources": [
-                    "*./js"
+                    "*./js",
+                    "injected.js"
             ],
-            "matches": ["<all_urls>"]
+            "matches": [
+                "<all_urls>",
+                "https://www.netflix.com/*"
+            ]
         }
     ],
     "host_permissions": [

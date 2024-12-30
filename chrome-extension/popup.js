@@ -11,10 +11,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const disconnectBtn = document.getElementById('disconnect-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const selectVideoMsg = document.getElementById('select-video-msg');
-    const ToggleSidebarBtn = document.getElementById('toggle-sidebar');
+    const ToggleSidebarBtn = document.getElementById('toggle-sidebar'); 
+    //const chatContainer = document.getElementById('chat-container'); 
 
     let peerId = null; 
+    let shadowRoot = null; // Shadow DOM root for chat sidebar
     
+    // Initialize chat sidebar
+    //initializeChatSidebar();
+
     // Function to check if user is logged in and has valid token
     async function isUserLoggedIn() {
         return new Promise((resolve) => {
@@ -23,6 +28,48 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    // Function to initialize the Shadow DOM for chat sidebar
+    //function initializeChatSidebar() {
+    //    const chatHost = document.createElement('div');
+    //    chatHost.setAttribute('id', 'chat-sidebar');
+    //    chatContainer.appendChild(chatHost);
+//
+    //    shadowRoot = chatHost.attachShadow({ mode: 'open' });
+    //    shadowRoot.innerHTML = `
+    //        <style>
+    //            #chat-container {
+    //                width: 300px;
+    //                height: 100%;
+    //                border-left: 1px solid #ddd;
+    //                background: #f9f9f9;
+    //                display: flex;
+    //                flex-direction: column;
+    //            }
+    //            #chat-messages {
+    //                flex: 1;
+    //                overflow-y: auto;
+    //                padding: 10px;
+    //            }
+    //            #chat-input {
+    //                border-top: 1px solid #ddd;
+    //                padding: 10px;
+    //            }
+    //        </style>
+    //        <div id="chat-container">
+    //            <div id="chat-messages"></div>
+    //            <input id="chat-input" type="text" placeholder="Type a message..." />
+    //        </div>
+    //    `;
+    //}
+
+    //// Function to update UI with chat visibility
+    //function updateChatVisibility(isInParty) {
+    //    if (isInParty) {
+    //        chatContainer.classList.remove('d-none');
+    //    } else {
+    //        chatContainer.classList.add('d-none');
+    //    }
+    //}
 
     // Function to check the stored party state whenever popup is opened/closed after starting/joining party.
     // Fix for this issue from last commit as popup kept going back to start watch party stage. 
@@ -75,7 +122,8 @@ document.addEventListener('DOMContentLoaded', function() {
             userInfo.classList.add('d-none');
             inviteSection.classList.add('d-none');
             disconnectBtn.classList.add('d-none');
-            
+            //chatContainer.classList.add('d-none'); 
+
             // Clear stored UI state when logging out
             chrome.storage.local.remove(['uiState']);
             return;
@@ -97,6 +145,8 @@ document.addEventListener('DOMContentLoaded', function() {
         inviteSection.classList.toggle('d-none', !isInParty);
         disconnectBtn.classList.toggle('d-none', !isInParty);
 
+        //updateChatVisibility(isInParty);
+
         // Store the new UI state
         chrome.storage.local.set({ 
             uiState: { isLoggedIn, hasVideo, isInParty }
@@ -108,79 +158,54 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to initialize popup properly when opened
     async function initializePopup() {
         const isLoggedIn = await isUserLoggedIn();
-        
+    
         if (!isLoggedIn) {
             updateUI(false, false, false);
             return;
         }
-
-        // Check stored UI state first
-    chrome.storage.local.get(['uiState'], function(result) {
-        if (result.uiState) {
-            if (result.uiState.isLoggedIn === isLoggedIn) {
-                // Verify `hasVideo` with content.js
+    
+        chrome.storage.local.get(['token'], function(result) {
+            if (!result.token) {
+                updateUI(false, false, false);
+                return;
+            }
+    
+            fetch('http://localhost:3000/user', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${result.token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch user data');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('username').textContent = data.name || 'Guest';
+                updateUI(true, false, false);
+    
+                // Notify content.js to check video status
                 chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                    if (!tabs[0]?.id) {
-                        console.warn('No active tab found to verify video presence');
-                        updateUI(isLoggedIn, false, result.uiState.isInParty);
-                        return;
-                    }
-
+                    if (!tabs[0]?.id) return;
+    
                     chrome.tabs.sendMessage(tabs[0].id, { action: 'getPartyStatus' }, (response) => {
                         if (chrome.runtime.lastError) {
                             console.error('Error checking video status:', chrome.runtime.lastError);
-                            updateUI(isLoggedIn, false, result.uiState.isInParty);
+                            updateUI(true, false, false);
                         } else {
                             const hasVideo = response?.hasVideo || false;
-                            updateUI(isLoggedIn, hasVideo, result.uiState.isInParty);
-                        }
-                    });
-                });
-                return;
-            }
-        }
-
-            // If no valid UI state, proceed with token verification
-            chrome.storage.local.get(['token'], function(result) {
-                if (!result.token) {
-                    updateUI(false, false, false);
-                    return;
-                }
-    
-                fetch('http://localhost:3000/user', {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${result.token}`
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Failed to fetch user data');
-                    return response.json();
-                })
-                .then(data => {
-                    document.getElementById('username').textContent = data.name || 'Guest';
-    
-                    // Recheck video presence (fix for object incorrectly updating everything as false in last 2 tests)
-                    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                        if (!tabs[0]?.id) {
-                            updateUI(true, false, false);
-                            return;
-                        }
-    
-                        chrome.tabs.sendMessage(tabs[0].id, { action: 'getPartyStatus' }, (response) => {
-                            const hasVideo = response?.hasVideo || false;
                             updateUI(true, hasVideo, false);
-                        });
+                        }
                     });
-                })
-                .catch(error => {
-                    console.error('Error fetching user data:', error);
-                    chrome.storage.local.remove(['token', 'uiState']);
-                    updateUI(false, false, false);
                 });
+            })
+            .catch(error => {
+                console.error('Error fetching user data:', error);
+                chrome.storage.local.remove(['token']);
+                updateUI(false, false, false);
             });
         });
-    }
+    }    
 
     // Listen for tokenStored message when user logs in (when they were not logged in)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -273,11 +298,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
         
     chrome.runtime.sendMessage({ action: 'getPartyStatus' }, (response) => {
-        console.log('Party status response:', response);
-        if (response) {
-            updateUI(true, response.hasVideo, response.isInParty); 
+        if (response?.isInParty) {
+            updateUI(true, response.hasVideo, response.isInParty);
         } else {
-            console.error('Failed to fetch party status.');
+            const urlParams = new URLSearchParams(window.location.search);
+            const watchPartyId = urlParams.get('watchPartyId');
+            if (watchPartyId) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'joinParty', peerId: watchPartyId });
+            }
         }
     });
 

@@ -1,28 +1,54 @@
 // Watch party state storage stuff from content.js 
-// export to content.js for use
 class WatchPartyState {
     constructor() {
-        this.stateKey = 'watchPartyState';
+        this.stateKey = 'partyState';
     }
 
     async save(state) {
-        await chrome.storage.local.set({
-            [this.stateKey]: {
-                isInParty: state.isInParty,
-                peerId: state.peerId,
-                isHost: state.isHost,
-                lastKnownTime: state.lastKnownTime,
-                timestamp: Date.now()
+        return new Promise((resolve, reject) => {
+            try {
+                chrome.storage.local.set({ [this.stateKey]: state }, () => {
+                    console.log('Party state saved:', state);
+                    resolve(state);
+                });
+            } catch (error) {
+                console.error('Failed to save party state:', error);
+                reject(error);
             }
         });
     }
 
     async load() {
-        const data = await chrome.storage.local.get(this.stateKey);
-        return data[this.stateKey];
+        return new Promise((resolve, reject) => {
+            try {
+                chrome.storage.local.get([this.stateKey], (result) => {
+                    if (chrome.runtime.lastError) {
+                        console.error('Error loading party state:', chrome.runtime.lastError.message);
+                        reject(chrome.runtime.lastError);
+                    } else {
+                        const state = result[this.stateKey] || null;
+                        console.log('Loaded party state:', state);
+                        resolve(state);
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load party state:', error);
+                reject(error);
+            }
+        });
     }
 
     async clear() {
-        await chrome.storage.local.remove(this.stateKey);
+        return new Promise((resolve, reject) => {
+            try {
+                chrome.storage.local.remove([this.stateKey], () => {
+                    console.log('Party state cleared');
+                    resolve();
+                });
+            } catch (error) {
+                console.error('Failed to clear party state:', error);
+                reject(error);
+            }
+        });
     }
 }
