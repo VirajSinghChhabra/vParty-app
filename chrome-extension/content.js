@@ -1,14 +1,13 @@
-// Testing failed - This is a saving point/commit. Going to consider and try a revamp from using WebSockets to using WebRTC and peer.js for session/room creation, 
+// Testing failed - This is a saving point/commit. Going to consider and try a revamp from using WebSockets to using WebRTC and peer.js for session creation, 
 // connection and playback communication. Good luck man. 
 
 // See you made a lot of progress. 
 // Simplify content.js and move stuff to other files for better handling, readibility flow and error handling etc. 
 // Calm down. I can do this. Good luck. 
 
-// content.js
-const Room = require('./classes/Room.js');
-const VideoSynchronizer = require('./classes/VideoSynchronizer.js');
-const WatchPartyState = require('./classes/WatchPartyState.js');
+// const Room = require('./classes/Room.js');
+// const VideoSynchronizer = require('./classes/VideoSynchronizer.js');
+// const WatchPartyState = require('./classes/WatchPartyState.js');
 
 (() => {
     let room = null;

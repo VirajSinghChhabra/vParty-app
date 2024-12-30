@@ -1,7 +1,6 @@
 // Idea is to create a "Room" as a concrete thing for all peers/users to start/leave which will store all the information 
 // about the connection state and peer's information, whether or not the popup is open or not. 
 // The last method didn't work so i hope this does, the deadline's nearing. Extremely tired but won't quit eh. 
-const ConnectionManager = require('./ConnectionManager.js');
 class Room {
     constructor(peerId, peer, connection = null) {
         this.peerId = peerId;
