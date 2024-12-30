@@ -115,18 +115,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Check stored UI state first
-        chrome.storage.local.get(['uiState'], function(result) {
-            if (result.uiState) {
-                // Verify stored state matches current login state
-                if (result.uiState.isLoggedIn === isLoggedIn) {
-                    updateUI(
-                        result.uiState.isLoggedIn,
-                        result.uiState.hasVideo,
-                        result.uiState.isInParty
-                    );
-                    return;
-                }
+    chrome.storage.local.get(['uiState'], function(result) {
+        if (result.uiState) {
+            if (result.uiState.isLoggedIn === isLoggedIn) {
+                // Verify `hasVideo` with content.js
+                chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                    if (!tabs[0]?.id) {
+                        console.warn('No active tab found to verify video presence');
+                        updateUI(isLoggedIn, false, result.uiState.isInParty);
+                        return;
+                    }
+
+                    chrome.tabs.sendMessage(tabs[0].id, { action: 'getPartyStatus' }, (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('Error checking video status:', chrome.runtime.lastError);
+                            updateUI(isLoggedIn, false, result.uiState.isInParty);
+                        } else {
+                            const hasVideo = response?.hasVideo || false;
+                            updateUI(isLoggedIn, hasVideo, result.uiState.isInParty);
+                        }
+                    });
+                });
+                return;
             }
+        }
 
             // If no valid UI state, proceed with token verification
             chrome.storage.local.get(['token'], function(result) {
@@ -134,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateUI(false, false, false);
                     return;
                 }
-
+    
                 fetch('http://localhost:3000/user', {
                     method: 'GET',
                     headers: {
@@ -147,7 +159,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(data => {
                     document.getElementById('username').textContent = data.name || 'Guest';
-                    checkStoredPartyState();
+    
+                    // Recheck video presence (fix for object incorrectly updating everything as false in last 2 tests)
+                    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                        if (!tabs[0]?.id) {
+                            updateUI(true, false, false);
+                            return;
+                        }
+    
+                        chrome.tabs.sendMessage(tabs[0].id, { action: 'getPartyStatus' }, (response) => {
+                            const hasVideo = response?.hasVideo || false;
+                            updateUI(true, hasVideo, false);
+                        });
+                    });
                 })
                 .catch(error => {
                     console.error('Error fetching user data:', error);

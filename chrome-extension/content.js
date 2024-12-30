@@ -15,7 +15,9 @@
     const partyState = new WatchPartyState();
 
     function detectVideo() {
-        return document.querySelector('video');
+        const video = document.querySelector('video');
+        console.log('Video detected:', !!video);
+        return video;
     }
 
     async function startParty() {
