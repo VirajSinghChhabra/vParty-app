@@ -297,16 +297,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
         
-    chrome.runtime.sendMessage({ action: 'getPartyStatus' }, (response) => {
-        if (response?.isInParty) {
-            updateUI(true, response.hasVideo, response.isInParty);
-        } else {
-            const urlParams = new URLSearchParams(window.location.search);
-            const watchPartyId = urlParams.get('watchPartyId');
-            if (watchPartyId) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: 'joinParty', peerId: watchPartyId });
-            }
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (!tabs || !tabs[0]) {
+            console.error('No active tab found');
+            updateUI(false, false, false);
+            return;
         }
+    
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'getPartyStatus' }, (response) => {
+            if (chrome.runtime.lastError) {
+                console.error('Error checking video status:', chrome.runtime.lastError);
+                updateUI(true, false, false);
+            } else if (!response) {
+                console.error('No response received from content.js');
+                updateUI(true, false, false);
+            } else {
+                const { hasVideo, isInParty } = response;
+                updateUI(true, hasVideo, isInParty);
+            }
+        });
     });
 
     // Disconnect from the party function

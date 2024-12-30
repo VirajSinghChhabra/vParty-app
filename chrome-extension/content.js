@@ -6,7 +6,12 @@
 // Calm down. I can do this. Good luck. 
 
 (() => {
-    // Inject Netflix API script 
+    let netflixPlayerAPI = null;
+    let room = null;
+    let videoSync = null;
+    const partyState = new WatchPartyState();
+
+    // Inject Netflix API script into netflix page
     function injectScript(file) {
         const script = document.createElement('script');
         script.src = chrome.runtime.getURL(file);
@@ -14,12 +19,46 @@
         (document.head || document.documentElement).appendChild(script);
     }
     
-    // Inject the video player access script
+    // Inject the API access script
     injectScript('injected.js');
 
-    let room = null;
-    let videoSync = null;
-    const partyState = new WatchPartyState();
+    // Listen for messages from injected.js
+    window.addEventListener('message', (event) => {
+        if (event.source === window && event.data.type === 'NETFLIX_PLAYER_API_READY') {
+            console.log('Received Netflix player session ID:', event.data.sessionId);
+
+            // Construct Netflix Player API based on data from injected.js
+            netflixPlayerAPI = {
+                getCurrentTime: () => event.data.currentTime,
+                seek: (time) => window.postMessage({ type: 'NETFLIX_SEEK', time }, '*'),
+                play: () => window.postMessage({ type: 'NETFLIX_PLAY' }, '*'),
+                pause: () => window.postMessage({ type: 'NETFLIX_PAUSE' }, '*'),
+            };
+
+            console.log('Netflix player API reconstructed in content.js:', netflixPlayerAPI);
+        }
+    });
+
+    // Fetch the Netflix player object using Netflix API
+    // Important to wait until window.netflixPlayerAPI is defined
+    function getNetflixPlayer() {
+        return new Promise((resolve, reject) => {
+            const checkInterval = 100; // Check every 100ms
+            const maxAttempts = 50;   // Retry up to 50 times (5 seconds)
+            let attempts = 0;
+
+            const intervalId = setInterval(() => {
+                console.log('Checking Netflix player API (via postMessage):', netflixPlayerAPI);
+                if (netflixPlayerAPI) {
+                    clearInterval(intervalId); // Stop checking
+                    resolve(netflixPlayerAPI); // Return the API
+                } else if (++attempts >= maxAttempts) {
+                    clearInterval(intervalId); // Stop checking
+                    reject(new Error('Netflix player API is not available'));
+                }
+            }, checkInterval);
+        });
+    }
 
     function detectVideo() {
         const video = document.querySelector('video');
@@ -50,16 +89,6 @@
         });
     }
 
-    
-
-    // Fetch the Netflix player object using Netflix API
-    function getNetflixPlayer() {
-        if (!window.netflixPlayerAPI) {
-            throw new Error('Netflix player API is not available');
-        }
-        return window.netflixPlayerAPI;
-    }
-
     // Create an invite link with the host's playback state
     function createInviteLink(peerId) {
         const url = new URL(window.location.href);
@@ -72,18 +101,24 @@
 
     async function startParty() {
         try {
-            const player = getNetflixPlayer(); 
+            console.log('Attempting to start party...');
+            const player = await getNetflixPlayer(); // Wait for the Netflix API
+            console.log('Netflix player API obtained:', player);
+    
             room = await Room.create(); // Initialize room as host
+            console.log('Room created successfully:', room);
+    
             videoSync = new VideoSynchronizer(player, room); // Sync video using the player
-
-            const inviteLink = createInviteLink(room.peerId); 
+            console.log('Video synchronizer initialized');
+    
+            const inviteLink = createInviteLink(room.peerId); // Generate the invite link
             await partyState.save({
                 isInParty: true,
                 peerId: room.peerId,
                 isHost: true,
-                lastKnownTime: player.getCurrentTime(), 
+                lastKnownTime: player.getCurrentTime(), // Save Netflix player's current time
             });
-
+    
             console.log('Party started successfully. Invite link:', inviteLink);
             return { success: true, inviteLink };
         } catch (error) {
@@ -94,7 +129,7 @@
 
     async function joinParty(peerId) {
         try {
-            const player = getNetflixPlayer(); 
+            const player = await getNetflixPlayer(); // AGAIN VIRAJ, IMPORTANT to wait for API 
             room = await Room.join(peerId); // Join using host's peerId
     
             // Fetch the time from the URL for initial sync
