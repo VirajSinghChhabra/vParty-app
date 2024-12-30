@@ -15,151 +15,148 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let peerId = null; 
     
-    // Function to check the stored party state whenever popup is opened/closed after starting/joining party.
-    // Fix for this issue from last commit as popup kept going back to start watch party stage. 
-    function checkStoredPartyState() {
-        chrome.storage.local.get(['partyState'], function(result) {
-            if (result.partyState?.isInParty) {
-                updateUI(true, true, true);
-
-                // if we're the host, update the invite link
-                if (result.partyState.isHost) {
-                    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                        const videoId = tabs[0].url.match(/watch\/(\d+)/)[1];
-                        const inviteLink = `${tabs[0].url.split('?')[0]}?t=${result.partyState.lastKnownTime}&peerId=${result.partyState.peerId}`;
-                        inviteLinkInput.value = inviteLink;
-                    });
-                }
-            }
+    // Function to check if user is logged in and has valid token
+    async function isUserLoggedIn() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['token'], function(result) {
+                resolve(!!result.token);
+            });
         });
     }
+
+    // Function to check the stored party state whenever popup is opened/closed after starting/joining party.
+    // Fix for this issue from last commit as popup kept going back to start watch party stage. 
+    async function checkStoredPartyState() {
+        const loggedIn = await isUserLoggedIn();
+        if (!loggedIn) {
+            updateUI(false, false, false);
+            return;
+        }
+
+        // First check stored UI state
+        chrome.storage.local.get(['uiState'], function(result) {
+            if (result.uiState) {
+                const { isLoggedIn, hasVideo, isInParty } = result.uiState;
+                // Verify the stored state matches current login state
+                if (isLoggedIn === loggedIn) {
+                    updateUI(isLoggedIn, hasVideo, isInParty);
+                    return;
+                }
+            }
+
+            // If no valid UI state, check party state
+            chrome.storage.local.get(['partyState'], function(result) {
+                if (result.partyState?.isInParty) {
+                    updateUI(true, true, true);
+
+                    if (result.partyState.isHost) {
+                        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                            if (tabs[0]?.url) {
+                                const inviteLink = `${tabs[0].url.split('?')[0]}?t=${result.partyState.lastKnownTime}&peerId=${result.partyState.peerId}`;
+                                inviteLinkInput.value = inviteLink;
+                            }
+                        });
+                    }
+                } else {
+                    updateUI(true, false, false);
+                }
+            });
+        });
+    }
+
     // Function to update UI based on view stages
     function updateUI(isLoggedIn, hasVideo, isInParty) {
         console.log('Updating UI with:', { isLoggedIn, hasVideo, isInParty });
-    
-        loggedIn.classList.toggle('d-none', !isLoggedIn);
-        notLoggedIn.classList.toggle('d-none', isLoggedIn);
-        userInfo.classList.toggle('d-none', !isLoggedIn);
-    
+
+        // Always show login view if not logged in
+        if (!isLoggedIn) {
+            loggedIn.classList.add('d-none');
+            notLoggedIn.classList.remove('d-none');
+            userInfo.classList.add('d-none');
+            inviteSection.classList.add('d-none');
+            disconnectBtn.classList.add('d-none');
+            
+            // Clear stored UI state when logging out
+            chrome.storage.local.remove(['uiState']);
+            return;
+        }
+
+        // Update logged in view
+        loggedIn.classList.remove('d-none');
+        notLoggedIn.classList.add('d-none');
+        userInfo.classList.remove('d-none');
+
         const canStartParty = isLoggedIn && hasVideo && !isInParty;
         
         startPartyBtn.disabled = !canStartParty;
         startPartyBtn.classList.toggle('btn-secondary', !canStartParty);
         startPartyBtn.classList.toggle('btn-primary', canStartParty);
-    
+        startPartyBtn.classList.toggle('d-none', isInParty);
+
         selectVideoMsg.classList.toggle('d-none', hasVideo);
         inviteSection.classList.toggle('d-none', !isInParty);
         disconnectBtn.classList.toggle('d-none', !isInParty);
-        startPartyBtn.classList.toggle('d-none', isInParty);
-    
-        // Store UI state
+
+        // Store the new UI state
         chrome.storage.local.set({ 
             uiState: { isLoggedIn, hasVideo, isInParty }
+        }, () => {
+            console.log('UI state saved:', { isLoggedIn, hasVideo, isInParty });
         });
     }
 
-    function updateLoginState(token) {
-        const isLoggedIn = !!token;
-        if (isLoggedIn) {
-            const user = parseJWT(token);
-            if (user) {
-                document.getElementById('username').textContent = user.name || 'Guest';
-                // document.getElementById('email').textContent = user.email || 'user@example.com';
-            } else {
-                console.warn('Invalid token');
-            }
-        }
-        // Update the UI based on Login state
-        updateUI(isLoggedIn, false, false); // No video or party state at this point
-        return isLoggedIn;
-    }
-
-    function checkPartyStatusAndUpdateUI(isLoggedIn) {
-        console.log('Checking party status, isLoggedIn:', isLoggedIn);
+    // Function to initialize popup properly when opened
+    async function initializePopup() {
+        const isLoggedIn = await isUserLoggedIn();
         
-        chrome.storage.local.get(['partyState'], function(result) {
-            const storedPartyState = result.partyState;
-            
-            if (storedPartyState?.isInParty) {
-                console.log('Found stored party state:', storedPartyState);
-                updateUI(isLoggedIn, true, true);
-                
-                // If we're the host, make sure the invite link is available
-                if (storedPartyState.isHost && storedPartyState.peerId) {
-                    chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
-                        if (tabs[0]?.url) {
-                            const inviteLink = `${tabs[0].url.split('?')[0]}?t=${storedPartyState.lastKnownTime}&peerId=${storedPartyState.peerId}`;
-                            inviteLinkInput.value = inviteLink;
-                        }
-                    });
-                }
-                return;
-            }
-    
-            // If no stored state, check current status
-            chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
-                if (!tabs[0]?.id) {
-                    console.warn('No active tab found');
-                    updateUI(isLoggedIn, false, false);
+        if (!isLoggedIn) {
+            updateUI(false, false, false);
+            return;
+        }
+
+        // Check stored UI state first
+        chrome.storage.local.get(['uiState'], function(result) {
+            if (result.uiState) {
+                // Verify stored state matches current login state
+                if (result.uiState.isLoggedIn === isLoggedIn) {
+                    updateUI(
+                        result.uiState.isLoggedIn,
+                        result.uiState.hasVideo,
+                        result.uiState.isInParty
+                    );
                     return;
                 }
-                
-                chrome.tabs.sendMessage(tabs[0].id, {action: 'getPartyStatus'}, function(response) {
-                    if (chrome.runtime.lastError) {
-                        console.warn('Error getting party status:', chrome.runtime.lastError);
-                        updateUI(isLoggedIn, false, false);
-                        return;
+            }
+
+            // If no valid UI state, proceed with token verification
+            chrome.storage.local.get(['token'], function(result) {
+                if (!result.token) {
+                    updateUI(false, false, false);
+                    return;
+                }
+
+                fetch('http://localhost:3000/user', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${result.token}`
                     }
-                    
-                    console.log('Received party status response:', response);
-                    updateUI(
-                        isLoggedIn, 
-                        response?.hasVideo ?? false, 
-                        response?.isInParty ?? false
-                    );
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to fetch user data');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('username').textContent = data.name || 'Guest';
+                    checkStoredPartyState();
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                    chrome.storage.local.remove(['token', 'uiState']);
+                    updateUI(false, false, false);
                 });
             });
         });
     }
-
-    // Initial check for token and session when popup opens
-    chrome.storage.local.get(['token'], function(result) {
-        if (!result.token) {
-            console.warn('No token found');
-            updateUI(false, false, false);
-            return;
-        }
-        console.log('Token found in popup.js:', result.token);
-    
-        // Fetch user information using the token
-        fetch('http://localhost:3000/user', {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${result.token}`
-            }
-        })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch user data: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then((data) => {
-            console.log('User data retrieved:', data);
-            updateUI(true, true, false); 
-
-            const isLoggedIn = updateLoginState(result.token);
-            checkPartyStatusAndUpdateUI(isLoggedIn);
-        })
-        .catch((error) => {
-            console.error('Error fetching user data:', error);
-            chrome.storage.local.remove('token');
-            updateUI(false, false, false);
-        });
-    });
-    
-    // To check party state after login
-    checkStoredPartyState();
 
     // Listen for tokenStored message when user logs in (when they were not logged in)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -266,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chrome.tabs.sendMessage(tabs[0].id, { action: 'disconnectParty' }, function(response) {
                 if (response?.success) {
                     updateUI(true, true, false);
-                    chrome.storage.local.remove(['partyState']);
+                    chrome.storage.local.remove(['partyState', 'uiState']);
                 } else {
                     console.error('Failed to disconnect:', response?.error);
                 }
@@ -276,12 +273,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Logout button function
     logoutBtn.addEventListener('click', function() {
-        localStorage.removeItem('token');
-        chrome.storage.local.remove('token', function() {
-            console.log('Token removed. Logged out.');
+        chrome.storage.local.remove(['token', 'uiState', 'partyState'], function() {
+            console.log('Logged out and cleared states');
             updateUI(false, false, false);
         });
-    })
+    });
 
     // Copy button logic
     copyLinkBtn.addEventListener('click', function() {
@@ -313,4 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return null;
         }
     }
+
+    // Initialize popup when opened
+    initializePopup();
 });
