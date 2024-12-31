@@ -140,12 +140,12 @@
     }
 
     // Create an invite link with the host's playback state
-    function createInviteLink(peerId) {
+    async function createInviteLink(peerId) {
         const url = new URL(window.location.href);
-        const player = getNetflixPlayer(); 
-        const currentTime = player.getCurrentTime(); // Fetch the current time in ms
-        url.searchParams.set('watchPartyId', peerId);
+        const player = await getNetflixPlayer(); 
+        const currentTime = await player.getCurrentTime(); // Fetch the current time in ms
         url.searchParams.set('t', currentTime); // 't' is netflix's time search param
+        url.searchParams.set('watchPartyId', peerId);
         return url.toString();
     }
 
@@ -161,15 +161,17 @@
             videoSync = new VideoSynchronizer(player, room); // Sync video using the player
             console.log('Video synchronizer initialized');
     
-            const inviteLink = createInviteLink(room.peerId); // Generate the invite link
+            const inviteLink = await createInviteLink(room.peerId); // Generate the invite link
             await partyState.save({
                 isInParty: true,
                 peerId: room.peerId,
                 isHost: true,
-                lastKnownTime: player.getCurrentTime(), // Save Netflix player's current time
+                lastKnownTime: await player.getCurrentTime(), // Save Netflix player's current time
             });
     
             console.log('Party started successfully. Invite link:', inviteLink);
+            // Pass inviteLink to popup.js for UI update
+            chrome.runtime.sendMessage({ action: 'partyStarted', inviteLink });
             return { success: true, inviteLink };
         } catch (error) {
             console.error('Failed to start party:', error);

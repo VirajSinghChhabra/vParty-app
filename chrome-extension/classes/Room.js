@@ -111,11 +111,16 @@ class Room {
                     this.emit('seeked', command.currentTime);
                     break;
                 case 'REQUEST_CURRENT_TIME': 
-                    const player = getNetflixPlayer(); 
-                    const currentTime = player.getCurrentTime();
-                    this.connection.send(
-                        JSON.stringify({ type: 'currentTime', currentTime })
-                    );
+                    if (this.isHost) {
+                        const currentTime = netflixPlayerAPI.getCurrentTime();
+                        this.sendCommand('currentTime', { currentTime });
+                    }
+                    break;
+                case 'currentTime':
+                    if (!this.isHost) {
+                        const { currentTime } = data;
+                        netflixPlayerAPI.seek(currentTime);
+                    }
                     break;
                 default:
                     console.warn('Unknown command received:', command.type);

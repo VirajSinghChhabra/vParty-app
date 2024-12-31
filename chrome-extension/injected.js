@@ -2,6 +2,7 @@
     const maxAttempts = 20; // Retry up to 20 times
     const interval = 500; // Wait 500ms between retries
     let attempts = 0;
+    let player = null;
 
     function initializeNetflixAPI() {
         try {
@@ -15,7 +16,7 @@
                 }
 
                 const playerSessionId = playerSessionIds[0];
-                const player = videoPlayer.getVideoPlayerBySessionId(playerSessionId);
+                player = videoPlayer.getVideoPlayerBySessionId(playerSessionId);
 
                 // Set up event listeners for the Netflix player
                 setupPlayerEventListeners(player);

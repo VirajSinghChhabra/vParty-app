@@ -11,20 +11,43 @@ class VideoSynchronizer {
     }
 
     setupListeners() {
+        if (!this.videoPlayer) {
+            console.error('Video player is not defined');
+            return;
+        }
+
+        let lastEventTime = 0;
+        const debounceInterval = 1000; // 1 second debounce
+
+        const shouldProcessEvent = () => {
+            const now = Date.now();
+            if (now - lastEventTime >= debounceInterval) {
+                lastEventTime = now;
+                return true;
+            }
+            return false;
+        };
+
         // Listen for Netflix player events
         this.videoPlayer.addEventListener('play', (data) => {
-            console.log('Play event received:', data);
-            this.handleVideoPlay(data);
+            if (shouldProcessEvent()) {
+                console.log('Play event received:', data);
+                this.handleVideoPlay(data);
+            }
         });
 
         this.videoPlayer.addEventListener('pause', (data) => {
-            console.log('Pause event received:', data);
-            this.handleVideoPause(data);
+            if (shouldProcessEvent()) {
+                console.log('Pause event received:', data);
+                this.handleVideoPause(data);
+            };
         });
 
         this.videoPlayer.addEventListener('seeked', (data) => {
-            console.log('Seek event received:', data);
-            this.handleVideoSeeked(data);
+            if (shouldProcessEvent()) {
+                console.log('Seek event received:', data);
+                this.handleVideoSeeked(data);
+            }
         });
 
         this.videoPlayer.addEventListener('buffering', (data) => {

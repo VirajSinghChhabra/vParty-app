@@ -235,11 +235,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then((data) => {
                     console.log('User data retrieved:', data);
-                    updateUI(true, true, false); 
+                    updateUI(isLoggedIn, true, false); 
                 })
                 .catch((error) => {
                     console.error('Error fetching user data after tokenStored:', error);
-                    updateUI(false, false, false);
+                    updateUI(isLoggedIn, false, false);
                 });
             });
         }
@@ -290,6 +290,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update UI for peer who is joining a party 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'partyStarted') {
+            const inviteLink = message.inviteLink;
+            inviteLinkInput.value = inviteLink; // Update the invite link in the UI
+            updateUI(true, true, true); 
+        }
         if (message.action === 'partyJoined') {
             updateUI(true, true, true); 
             console.log('Joined the party');
