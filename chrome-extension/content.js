@@ -29,20 +29,64 @@
 
             // Construct Netflix Player API based on data from injected.js
             netflixPlayerAPI = {
-                getCurrentTime: () => event.data.currentTime,
+                getCurrentTime: () => {
+                    return new Promise((resolve) => {
+                        const listener = (event) => {
+                            if (event.source === window && event.data.type === 'NETFLIX_TIME_UPDATE') {
+                                window.removeEventListener('message', listener);
+                                resolve(event.data.currentTime);
+                            }
+                        };
+                        window.addEventListener('message', listener);
+                        window.postMessage({ type: 'NETFLIX_GET_TIME' }, '*');
+                    });
+                },
+            
                 seek: (time) => window.postMessage({ type: 'NETFLIX_SEEK', time }, '*'),
+                
                 play: () => window.postMessage({ type: 'NETFLIX_PLAY' }, '*'),
+                
                 pause: () => window.postMessage({ type: 'NETFLIX_PAUSE' }, '*'),
+            
                 addEventListener: (event, callback) => {
-                    window.addEventListener('message', (e) => {
-                        if (e.source === window && e.data.type === `NETFLIX_${event.toUpperCase()}`) {
-                            callback(e.data);
+                    const eventListener = (e) => {
+                        if (e.source === window) {
+                            switch(e.data.type) {
+                                case `NETFLIX_${event.toUpperCase()}`:
+                                case 'NETFLIX_BUFFERING':
+                                case 'NETFLIX_TIMEUPDATE':
+                                case 'NETFLIX_ERROR':
+                                    callback(e.data);
+                                    break;
+                            }
                         }
+                    };
+                    
+                    window.addEventListener('message', eventListener);
+                    
+                    // Return cleanup function
+                    return () => window.removeEventListener('message', eventListener);
+                },
+            
+                // Get full player state
+                getState: () => {
+                    return new Promise((resolve) => {
+                        const listener = (event) => {
+                            if (event.source === window && event.data.type === 'NETFLIX_STATE_UPDATE') {
+                                window.removeEventListener('message', listener);
+                                resolve(event.data);
+                            }
+                        };
+                        window.addEventListener('message', listener);
+                        window.postMessage({ type: 'NETFLIX_GET_STATE' }, '*');
                     });
                 }
             };
+        };
 
-            console.log('Netflix player API reconstructed in content.js:', netflixPlayerAPI);
+        // Add error handling for the player API
+        if (event.source === window && event.data.type === 'NETFLIX_ERROR') {
+            console.error('Netflix player error:', event.data.error);                // Handle any cleanup or user notification here
         }
     });
 
