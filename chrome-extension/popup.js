@@ -190,7 +190,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             updateUI(true, false, false);
                         } else {
                             const hasVideo = response?.hasVideo || false;
-                            updateUI(true, hasVideo, false);
+                            const isInParty = response?.isInParty || false
+                            updateUI(true, hasVideo, isInParty);
                         }
                     });
                 });

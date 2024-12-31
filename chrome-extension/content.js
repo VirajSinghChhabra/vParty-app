@@ -110,6 +110,18 @@
         });
     }
 
+    async function checkStoredPartyState() {
+        const state = await partyState.load();
+        if (state?.isInParty) {
+            if (state.isHost) {
+                await startParty();
+            } else {
+                await joinParty(state.peerId);
+            }
+            updateUI(true, true, true);
+        }
+    }
+    
     function detectVideo() {
         const video = document.querySelector('video');
         console.log('Video detected:', !!video);
@@ -209,15 +221,21 @@
     }
 
     async function disconnectFromParty() {
-        if (room) {
-            room.close();
-            room = null;
+        try {
+            if (room) {
+                room.close();
+                room = null;
+            }
+            if (videoSync) {
+                videoSync = null;
+            }
+            await partyState.clear();
+            console.log('Disconnected from party');
+            return { success: true };
+        } catch (error) {
+            console.error('Error disconnecting:', error);
+            throw error;
         }
-        if (videoSync) {
-            videoSync = null;
-        }
-        await partyState.clear();
-        console.log('Disconnected from the party');
     }
 
     // Message handlers
@@ -269,6 +287,8 @@
 
     // Detect if the user is joining a party based on the URL
     window.addEventListener('load', async () => {
+        await checkStoredPartyState();
+
         const urlParams = new URLSearchParams(window.location.search);
         const watchPartyId = urlParams.get('watchPartyId');
 

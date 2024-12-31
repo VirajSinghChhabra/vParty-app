@@ -4,7 +4,7 @@
 class Room {
     constructor(isHost, peerId = null) {
         this.isHost = isHost;
-        this.peer = new Peer(this.peerId);
+        this.peer = new Peer();
         this.connection = null;
         this.eventHandlers = {};
         this.connectionOpen = false;
@@ -18,14 +18,12 @@ class Room {
                 this.emit('ready', id);
             }
         });
-
-        this.bindEventListeners();
     }
 
     setVideoPlayer(player) {
         this.videoPlayer = player;
+        console.log('Video player set:', !!player);
     }
-
 
     static async create() {
         return new Promise((resolve, reject) => {
@@ -57,19 +55,35 @@ class Room {
 
     async initializeHost() {
         console.log('Initializing room as host...');
-        this.peer.on('connection', this.handleNewConnection.bind(this));
-        console.log('Room created successfully. Peer ID:', this.peerId);
+        this.peer.on('connection', (conn) => {
+            console.log('Received connection from peer');
+            if (this.connection) {
+                conn.close();
+                return;
+            }
+            this.connection = conn;
+            this.bindConnectionListeners(conn);
+        });
     }
 
     async initializePeer(hostPeerId) {
-        console.log(`Joining room with peer ID: ${hostPeerId}`);
-        this.connection = this.peer.connect(hostPeerId);
-        await new Promise((resolve) => {
-            this.connection.on('open', () => {
+        console.log(`Connecting to host: ${hostPeerId}`);
+        const conn = this.peer.connect(hostPeerId, {
+            reliable: true
+        });
+        
+        return new Promise((resolve, reject) => {
+            conn.on('open', () => {
+                this.connection = conn;
                 this.connectionOpen = true;
-                this.bindConnectionListeners(this.connection);
+                this.bindConnectionListeners(conn);
                 resolve();
             });
+            
+            conn.on('error', reject);
+            
+            // Add timeout
+            setTimeout(() => reject(new Error('Connection timeout')), 10000);
         });
     }
 
@@ -94,18 +108,6 @@ class Room {
         console.log('New connection received');
         this.connection = connection;
         this.bindConnectionListeners(connection);
-    }
-
-    bindEventListeners() {
-        this.peer.on('error', (err) => {
-            console.error('Peer error:', err);
-            this.emit('error', err);
-        });
-
-        this.peer.on('disconnected', () => {
-            console.log('Peer disconnected');
-            this.emit('disconnected');
-        });
     }
 
     bindConnectionListeners(connection) {
@@ -134,18 +136,24 @@ class Room {
             console.log('Handling command:', data);
             
             switch (data.type) {
-                case 'HOST_ACTION':
-                    this.emit('hostAction', data);
-                    break;
                 case 'REQUEST_TIME_SYNC':
                     if (this.isHost && this.videoPlayer) {
-                        this.videoPlayer.getCurrentTime().then(currentTime => {
-                            this.sendCommand('TIME_UPDATE', { currentTime });
-                        });
+                        this.videoPlayer.getCurrentTime()
+                            .then(currentTime => {
+                                console.log('Sending current time to peer:', currentTime);
+                                const playbackState = {
+                                    currentTime,
+                                    type: 'TIME_UPDATE'
+                                };
+                                this.sendCommand('TIME_UPDATE', playbackState);
+                            })
+                            .catch(err => console.error('Error getting current time:', err));
                     }
                     break;
+
                 case 'TIME_UPDATE':
                     if (!this.isHost) {
+                        console.log('Received time update from host:', data);
                         this.emit('timeUpdate', data);
                     }
                     break;
@@ -183,10 +191,11 @@ class Room {
         if (this.connection) {
             this.connection.close();
             this.connection = null;
+            this.connectionOpen = false;
         }
-        this.connectionOpen = false;
         if (this.peer) {
             this.peer.destroy();
         }
+        this.emit('disconnected');
     }
 }
