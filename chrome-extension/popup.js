@@ -92,20 +92,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // If no valid UI state, check party state
-            chrome.storage.local.get(['partyState'], function(result) {
-                if (result.partyState?.isInParty) {
-                    updateUI(true, true, true);
-
-                    if (result.partyState.isHost) {
-                        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                            if (tabs[0]?.url) {
-                                const inviteLink = `${tabs[0].url.split('?')[0]}?t=${result.partyState.lastKnownTime}&peerId=${result.partyState.peerId}`;
-                                inviteLinkInput.value = inviteLink;
-                            }
-                        });
-                    }
-                } else {
-                    updateUI(true, false, false);
+            chrome.storage.local.get(['partyState'], function (result) {
+                const partyState = result.partyState || {};
+                const isInParty = partyState.isInParty || false;
+                const isHost = partyState.isHost || false;
+        
+                updateUI(loggedIn, !!detectVideo(), isInParty);
+        
+                if (isInParty && isHost) {
+                    const inviteLink = `${window.location.href.split('?')[0]}?t=${partyState.lastKnownTime}&watchPartyId=${partyState.peerId}`;
+                    document.getElementById('invite-link').value = inviteLink;
                 }
             });
         });

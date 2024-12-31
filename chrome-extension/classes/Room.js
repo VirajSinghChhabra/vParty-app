@@ -132,13 +132,18 @@ class Room {
 
     // Send commands to peers
     sendCommand(type, data) {
-        if (this.connectionOpen) {
-            const message = JSON.stringify({ type, ...data });
-            console.log('Sending command:', message);
-            this.connection.emit('data', message); 
-        } else {
-            console.warn('Cannot send command; connection is not open.');
+        if (!this.connectionOpen) {
+            console.warn('Command delayed; connection is not open.');
+            this.connection?.on('open', () => {
+                this.connectionOpen = true;
+                this.sendCommand(type, data); 
+            });
+            return;
         }
+    
+        const message = JSON.stringify({ type, ...data });
+        console.log('Sending command:', message);
+        this.connection.send(message);
     }
 
     on(event, handler) {
@@ -155,7 +160,7 @@ class Room {
     }
 
     generatePeerId() {
-        return Math.random().toString(36).substr(2, 9);
+        return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     }
 
     close() {

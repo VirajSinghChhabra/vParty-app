@@ -17,7 +17,7 @@ class VideoSynchronizer {
         }
 
         let lastEventTime = 0;
-        const debounceInterval = 1000; // 1 second debounce
+        const debounceInterval = 3000; // 1 second debounce
 
         const shouldProcessEvent = () => {
             const now = Date.now();
@@ -28,45 +28,33 @@ class VideoSynchronizer {
             return false;
         };
 
-        // Listen for Netflix player events
-        this.videoPlayer.addEventListener('play', (data) => {
-            if (shouldProcessEvent()) {
-                console.log('Play event received:', data);
-                this.handleVideoPlay(data);
-            }
+        const events = ['play', 'pause', 'seeked', 'timeupdate', 'buffering'];
+
+        // Dynamically set up event listeners for the video player
+        events.forEach((event) => {
+            this.videoPlayer.addEventListener(event, (data) => {
+                if (shouldProcessEvent()) {
+                    console.log(`Video event received: ${event}`, data);
+
+                    // Dynamically call the appropriate handler, if it exists
+                    const handlerName = `handleVideo${event.charAt(0).toUpperCase() + event.slice(1)}`;
+                    if (typeof this[handlerName] === 'function') {
+                        this[handlerName](data);
+                    } else {
+                        console.warn(`No handler defined for video event: ${event}`);
+                    }
+                }
+            });
         });
 
-        this.videoPlayer.addEventListener('pause', (data) => {
-            if (shouldProcessEvent()) {
-                console.log('Pause event received:', data);
-                this.handleVideoPause(data);
-            };
-        });
-
-        this.videoPlayer.addEventListener('seeked', (data) => {
-            if (shouldProcessEvent()) {
-                console.log('Seek event received:', data);
-                this.handleVideoSeeked(data);
-            }
-        });
-
-        this.videoPlayer.addEventListener('buffering', (data) => {
-            console.log('Buffer event received:', data);
-            this.handleBuffering(data);
-        });
-
-        this.videoPlayer.addEventListener('timeupdate', (data) => {
-            this.handleTimeUpdate(data);
-        });
-
-        // Listen for room events from peers
+        // Set up event listeners for room events from peers
         this.room.on('play', (data) => this.syncAndPlay(data));
         this.room.on('pause', (data) => this.syncAndPause(data));
         this.room.on('seeked', (data) => this.syncTime(data));
         this.room.on('buffering', (data) => this.handlePeerBuffering(data));
-        
-        // Set up periodic sync check
-        setInterval(() => this.checkSync(), 5000);
+
+        // Periodic sync checks
+        this.syncInterval = setInterval(() => this.checkSync(), 5000);
     }
 
     handleVideoPlay() {
@@ -157,9 +145,6 @@ class VideoSynchronizer {
         if (!this.room.connectionOpen) return;
 
         // Request current time from peers every 5 seconds
-        this.room.sendCommand('REQUEST_TIME', {
-            currentTime: this.lastSyncedTime,
-            timestamp: Date.now()
-        });
+        this.room.sendCommand('REQUEST_CURRENT_TIME', {});
     }
 }
