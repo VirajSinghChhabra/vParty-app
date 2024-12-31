@@ -152,25 +152,24 @@
     async function startParty() {
         try {
             console.log('Attempting to start party...');
-            const player = await getNetflixPlayer(); // Wait for the Netflix API
+            const player = await getNetflixPlayer();
             console.log('Netflix player API obtained:', player);
     
-            room = await Room.create(); // Initialize room as host
+            room = await Room.create();
             console.log('Room created successfully:', room);
     
-            videoSync = new VideoSynchronizer(player, room); // Sync video using the player
+            videoSync = new VideoSynchronizer(player, room);
             console.log('Video synchronizer initialized');
     
-            const inviteLink = await createInviteLink(room.peerId); // Generate the invite link
+            const inviteLink = await createInviteLink(room.peerId);
             await partyState.save({
                 isInParty: true,
                 peerId: room.peerId,
                 isHost: true,
-                lastKnownTime: await player.getCurrentTime(), // Save Netflix player's current time
+                lastKnownTime: await player.getCurrentTime(),
             });
     
             console.log('Party started successfully. Invite link:', inviteLink);
-            // Pass inviteLink to popup.js for UI update
             chrome.runtime.sendMessage({ action: 'partyStarted', inviteLink });
             return { success: true, inviteLink };
         } catch (error) {
@@ -181,32 +180,27 @@
 
     async function joinParty(peerId) {
         try {
-            const player = await getNetflixPlayer(); // AGAIN VIRAJ, IMPORTANT to wait for API 
-            room = await Room.join(peerId); // Join using host's peerId
+            const player = await getNetflixPlayer();
+            room = await Room.join(peerId);
+            room.setVideoPlayer(player);
     
-            // Fetch the time from the URL for initial sync
+            // Initial sync from URL param
             const initialTime = new URLSearchParams(window.location.search).get('t');
             if (initialTime) {
-                player.seek(parseInt(initialTime, 10));
+                await player.seek(parseInt(initialTime, 10));
             }
     
-            // Request host's current time for immediate correction
-            room.sendCommand('REQUEST_CURRENT_TIME', {});
-            room.on('currentTime', (data) => {
-                const { currentTime } = data;
-                if (Math.abs(player.getCurrentTime() - currentTime) > 0.5) {
-                    player.seek(currentTime); // Correct playback time
-                    console.log(`Synced to host's current time: ${currentTime}`);
-                }
-            });
-
-            videoSync = new VideoSynchronizer(player, room); // Sync video with the room
+            videoSync = new VideoSynchronizer(player, room);
+    
+            // Request immediate time sync
+            room.sendCommand('REQUEST_TIME_SYNC', {});
+    
             await partyState.save({
                 isInParty: true,
                 peerId,
                 isHost: false,
             });
-
+    
             console.log('Successfully joined the party');
         } catch (error) {
             console.error('Failed to join watch party:', error);

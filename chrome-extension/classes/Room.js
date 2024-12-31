@@ -4,26 +4,56 @@
 class Room {
     constructor(isHost, peerId = null) {
         this.isHost = isHost;
-        this.peerId = peerId || undefined;
         this.peer = new Peer(this.peerId);
         this.connection = null;
         this.eventHandlers = {};
         this.connectionOpen = false;
+        this.videoPlayer = null;
+
+        // Wait for peer to be assigned ID before proceeding
+        this.peer.on('open', (id) => {
+            this.peerId = id;
+            console.log('Received peer ID:', id);
+            if (this.isHost) {
+                this.emit('ready', id);
+            }
+        });
 
         this.bindEventListeners();
     }
 
+    setVideoPlayer(player) {
+        this.videoPlayer = player;
+    }
+
+
     static async create() {
-        const room = new Room(true);
-        await room.initializeHost();
-        return room;
+        return new Promise((resolve, reject) => {
+            const room = new Room(true);
+            room.on('ready', (peerId) => {
+                room.initializeHost();
+                resolve(room);
+            });
+            setTimeout(() => reject(new Error('Timeout creating room')), 10000);
+        });
     }
 
     static async join(peerId) {
-        const room = new Room(false, peerId);
-        await room.initializePeer();
-        return room;
+        return new Promise((resolve, reject) => {
+            if (!peerId) {
+                reject(new Error('Invalid peer ID'));
+                return;
+            }
+            const room = new Room(false);
+            room.peer.on('open', () => {
+                room.initializePeer(peerId)
+                    .then(() => resolve(room))
+                    .catch(reject);
+            });
+            setTimeout(() => reject(new Error('Timeout joining room')), 10000);
+        });
     }
+
 
     async initializeHost() {
         console.log('Initializing room as host...');
@@ -31,31 +61,27 @@ class Room {
         console.log('Room created successfully. Peer ID:', this.peerId);
     }
 
-    async initializePeer() {
-        console.log(`Joining room with peer ID: ${this.peerId}`);
-        this.connection = this.peer.connect(this.peerId); 
-        this.bindConnectionListeners(this.connection); 
-        console.log('Successfully joined room. Connection established.');
+    async initializePeer(hostPeerId) {
+        console.log(`Joining room with peer ID: ${hostPeerId}`);
+        this.connection = this.peer.connect(hostPeerId);
+        await new Promise((resolve) => {
+            this.connection.on('open', () => {
+                this.connectionOpen = true;
+                this.bindConnectionListeners(this.connection);
+                resolve();
+            });
+        });
     }
 
-    bindEventListeners() {
-        this.peer.on('error', (err) => {
-            console.error('Peer error:', err);
-            this.emit('error', err);
-        });
-
-        this.peer.on('disconnected', () => {
-            console.log('Peer disconnected');
-            this.emit('disconnected');
-        });
-
-        // Host-specific behavior: Only listen for connections if no active connection exists 
-        // This is for better functionality as current code is implemented for 1 to 1 peer session
-        if (!this.connection) {
-            this.peer.on('connection', this.handleNewConnection.bind(this));
-        } else {
-            this.bindConnectionListeners(this.connection);
+    handleNewConnection(connection) {
+        if (this.connection && this.connection.open) {
+            console.log('Rejecting new connection - already connected');
+            connection.close();
+            return;
         }
+        console.log('New connection received');
+        this.connection = connection;
+        this.bindConnectionListeners(connection);
     }
 
     handleNewConnection(connection) {
@@ -68,6 +94,18 @@ class Room {
         console.log('New connection received');
         this.connection = connection;
         this.bindConnectionListeners(connection);
+    }
+
+    bindEventListeners() {
+        this.peer.on('error', (err) => {
+            console.error('Peer error:', err);
+            this.emit('error', err);
+        });
+
+        this.peer.on('disconnected', () => {
+            console.log('Peer disconnected');
+            this.emit('disconnected');
+        });
     }
 
     bindConnectionListeners(connection) {
@@ -85,63 +123,45 @@ class Room {
         });
 
         connection.on('data', (data) => {
-            try {
-                const message = JSON.parse(data);
-                this.handleCommand(message);
-            } catch (error) {
-                console.error('Failed to parse data:', error);
-            }
+            console.log('Received data:', data);
+            this.handleCommand(data);
         });
     }
 
     // Handle incoming commands from peers
     handleCommand(data) {
         try {
-            const command = JSON.parse(data);
-            console.log('Received command:', command);
-
-            switch (command.type) {                         // Trigger events based on command type 
-                case 'PLAY':
-                    this.emit('play', command.currentTime);
+            console.log('Handling command:', data);
+            
+            switch (data.type) {
+                case 'HOST_ACTION':
+                    this.emit('hostAction', data);
                     break;
-                case 'PAUSE':
-                    this.emit('pause', command.currentTime);
-                    break;
-                case 'SEEKED':
-                    this.emit('seeked', command.currentTime);
-                    break;
-                case 'REQUEST_CURRENT_TIME': 
-                    if (this.isHost) {
-                        const currentTime = netflixPlayerAPI.getCurrentTime();
-                        this.sendCommand('currentTime', { currentTime });
+                case 'REQUEST_TIME_SYNC':
+                    if (this.isHost && this.videoPlayer) {
+                        this.videoPlayer.getCurrentTime().then(currentTime => {
+                            this.sendCommand('TIME_UPDATE', { currentTime });
+                        });
                     }
                     break;
-                case 'currentTime':
+                case 'TIME_UPDATE':
                     if (!this.isHost) {
-                        const { currentTime } = data;
-                        netflixPlayerAPI.seek(currentTime);
+                        this.emit('timeUpdate', data);
                     }
                     break;
-                default:
-                    console.warn('Unknown command received:', command.type);
             }
         } catch (error) {
-            console.error('Failed to handle incoming command:', error);
+            console.error('Failed to handle command:', error);
         }
     }
 
-    // Send commands to peers
+    // Handle send commands
     sendCommand(type, data) {
         if (!this.connectionOpen) {
-            console.warn('Command delayed; connection is not open.');
-            this.connection?.on('open', () => {
-                this.connectionOpen = true;
-                this.sendCommand(type, data); 
-            });
+            console.warn('Command delayed; connection is not open');
             return;
         }
-    
-        const message = JSON.stringify({ type, ...data });
+        const message = { type, ...data };
         console.log('Sending command:', message);
         this.connection.send(message);
     }
@@ -155,25 +175,18 @@ class Room {
 
     emit(event, data) {
         if (this.eventHandlers[event]) {
-            this.eventHandlers[event].forEach((handler) => handler(data));
+            this.eventHandlers[event].forEach(handler => handler(data));
         }
-    }
-
-    generatePeerId() {
-        return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
     }
 
     close() {
-        console.log('Closing room connection...');
         if (this.connection) {
-            this.connection.emit('close');
+            this.connection.close();
             this.connection = null;
         }
         this.connectionOpen = false;
+        if (this.peer) {
+            this.peer.destroy();
+        }
     }
-
-    get isConnected() {
-        return this.connection && this.connection.open;
-    }
-
 }
