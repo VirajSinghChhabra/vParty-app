@@ -4,7 +4,7 @@
 class Room {
     constructor(isHost, peerId = null) {
         this.isHost = isHost;
-        this.peerId = peerId || this.generatePeerId();
+        this.peerId = peerId || undefined;
         this.peer = new Peer(this.peerId);
         this.connection = null;
         this.eventHandlers = {};

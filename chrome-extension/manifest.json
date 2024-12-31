@@ -23,7 +23,7 @@
                 "*://*.netflix.com/*"
             ],
             "js": [
-                "js/peerjs.min.js",
+                "peerjs.min.js",
                 "classes/Room.js",
                 "classes/VideoSynchronizer.js",
                 "classes/WatchPartyState.js",

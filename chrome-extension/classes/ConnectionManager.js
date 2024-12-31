@@ -14,32 +14,21 @@ class ConnectionManager {
     }
 
     handleDisconnection() {
+        console.log('Connection lost. Attempting to reconnect...');
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
-            console.log(`Attempting to reconnect (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
             setTimeout(() => this.attemptReconnect(), this.getNextDelay());
         } else {
-            console.log('Max reconnection attempts reached');
+            console.error('Failed to reconnect after multiple attempts.');
             this.room.emit('permanentDisconnect');
         }
     }
 
     async attemptReconnect() {
-        this.reconnectAttempts++;
-        
         try {
-            let newRoom;
-            if (this.room.isHost) {
-                console.log('Recreating room as host...');
-                newRoom = await Room.create();
-            } else {
-                console.log(`Rejoining room with peer ID: ${this.room.peerId}`);
-                newRoom = await Room.join(this.room.peerId);
-            }
-
-            this.room = newRoom; // Update to the new room instance
-            this.setupConnectionHandlers(); // Rebind handlers to the new room
+            console.log('Reconnecting...');
+            this.room.reconnect();
         } catch (error) {
-            console.error('Reconnection attempt failed:', error);
+            console.error('Reconnection failed:', error);
             this.handleDisconnection();
         }
     }

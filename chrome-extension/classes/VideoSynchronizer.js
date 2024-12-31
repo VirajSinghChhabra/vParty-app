@@ -115,7 +115,7 @@ class VideoSynchronizer {
     }
     // Sync times for video events
     syncAndPlay(data) {
-        const timeDiff = Math.abs(this.lastSyncedTime - data.currentTime);
+        const timeDiff = Math.abs(this.videoPlayer.getCurrentTime() - data.currentTime);
         if (timeDiff > this.syncThreshold) {
             this.videoPlayer.seek(data.currentTime);
         }
@@ -123,7 +123,7 @@ class VideoSynchronizer {
     }
 
     syncAndPause(data) {
-        const timeDiff = Math.abs(this.lastSyncedTime - data.currentTime);
+        const timeDiff = Math.abs(this.videoPlayer.getCurrentTime() - data.currentTime);
         if (timeDiff > this.syncThreshold) {
             this.videoPlayer.seek(data.currentTime);
         }
@@ -144,7 +144,10 @@ class VideoSynchronizer {
     checkSync() {
         if (!this.room.connectionOpen) return;
 
-        // Request current time from peers every 5 seconds
-        this.room.sendCommand('REQUEST_CURRENT_TIME', {});
+        const currentTime = this.videoPlayer.getCurrentTime();
+        if (Math.abs(this.lastSyncedTime - currentTime) > this.syncThreshold) {
+            this.room.sendCommand('REQUEST_CURRENT_TIME', {});
+            this.lastSyncedTime = currentTime;
+        }
     }
 }
