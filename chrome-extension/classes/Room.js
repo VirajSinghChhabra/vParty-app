@@ -134,18 +134,13 @@ class Room {
     handleCommand(data) {
         try {
             console.log('Handling command:', data);
-            
             switch (data.type) {
                 case 'REQUEST_TIME_SYNC':
                     if (this.isHost && this.videoPlayer) {
                         this.videoPlayer.getCurrentTime()
                             .then(currentTime => {
                                 console.log('Sending current time to peer:', currentTime);
-                                const playbackState = {
-                                    currentTime,
-                                    type: 'TIME_UPDATE'
-                                };
-                                this.sendCommand('TIME_UPDATE', playbackState);
+                                this.sendCommand('TIME_UPDATE', { currentTime });
                             })
                             .catch(err => console.error('Error getting current time:', err));
                     }

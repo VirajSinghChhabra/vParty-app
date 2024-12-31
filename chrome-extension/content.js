@@ -10,6 +10,7 @@
     let room = null;
     let videoSync = null;
     const partyState = new WatchPartyState();
+    let currentTime;
 
     // Inject Netflix API script into netflix page
     function injectScript(file) {
@@ -155,7 +156,7 @@
     async function createInviteLink(peerId) {
         const url = new URL(window.location.href);
         const player = await getNetflixPlayer(); 
-        const currentTime = await player.getCurrentTime(); // Fetch the current time in ms
+        const currentTime = await player.getCurrentTime() / 1000 ; // Fetch the current time in ms
         url.searchParams.set('t', currentTime); // 't' is netflix's time search param
         url.searchParams.set('watchPartyId', peerId);
         return url.toString();
@@ -173,7 +174,7 @@
             videoSync = new VideoSynchronizer(player, room);
             console.log('Video synchronizer initialized');
     
-            const inviteLink = await createInviteLink(room.peerId);
+            inviteLink = await createInviteLink(room.peerId);
             await partyState.save({
                 isInParty: true,
                 peerId: room.peerId,
