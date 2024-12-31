@@ -1,40 +1,42 @@
 // Shifting all video sync related things into this file for better clarity and error handling.
 class VideoSynchronizer {
     constructor(videoPlayer, room) {
-        this.videoPlayer = videoPlayer; 
+        this.videoPlayer = videoPlayer;
         this.room = room;
-
+        this.lastSyncedTime = 0;
+        this.syncThreshold = 0.5; // Time difference threshold in seconds
         this.setupListeners();
     }
 
     setupListeners() {
-        // Video event listeners
-        this.video.addEventListener('play', () => this.handleVideoPlay());
-        this.video.addEventListener('pause', () => this.handleVideoPause());
-        this.video.addEventListener('seeked', () => this.handleVideoSeeked());
-
         // Room event listeners
         this.room.on('play', (currentTime) => this.syncAndPlay(currentTime));
         this.room.on('pause', (currentTime) => this.syncAndPause(currentTime));
         this.room.on('seeked', (currentTime) => this.syncTime(currentTime));
 
-        // Periodic sync check
+        // Set up interval for periodic sync
         setInterval(() => this.checkSync(), 5000);
     }
 
     handleVideoPlay() {
-        this.room.sendCommand('PLAY', { currentTime: this.videoPlayer.getCurrentTime() });
+        const currentTime = this.videoPlayer.getCurrentTime();
+        this.lastSyncedTime = currentTime;
+        this.room.sendCommand('PLAY', { currentTime });
     }
 
     handleVideoPause() {
-        this.room.sendCommand('PAUSE', { currentTime: this.videoPlayer.getCurrentTime() });
+        const currentTime = this.videoPlayer.getCurrentTime();
+        this.lastSyncedTime = currentTime;
+        this.room.sendCommand('PAUSE', { currentTime });
     }
 
     handleVideoSeeked() {
-        this.room.sendCommand('SEEKED', { currentTime: this.videoPlayer.getCurrentTime() });
+        const currentTime = this.videoPlayer.getCurrentTime();
+        this.lastSyncedTime = currentTime;
+        this.room.sendCommand('SEEKED', { currentTime });
     }
 
-    // Syc times for video events 
+    // Sync times for video events
     syncAndPlay(targetTime) {
         this.syncTime(targetTime);
         this.videoPlayer.play();
@@ -46,8 +48,10 @@ class VideoSynchronizer {
     }
 
     syncTime(targetTime) {
-        if (Math.abs(this.videoPlayer.getCurrentTime() - targetTime) > 0.5) {
+        const currentTime = this.videoPlayer.getCurrentTime();
+        if (Math.abs(currentTime - targetTime) > this.syncThreshold) {
             this.videoPlayer.seek(targetTime);
+            this.lastSyncedTime = targetTime;
         }
     }
 
@@ -57,9 +61,9 @@ class VideoSynchronizer {
     checkSync() {
         if (!this.room.connectionOpen) return;
 
-        // Send periodic sync updates
-        if (Math.abs(this.video.currentTime - this.lastSyncedTime) > this.syncThreshold) {
-            console.log('Periodic sync detected; sending seek command...');
+        const currentTime = this.videoPlayer.getCurrentTime();
+        if (Math.abs(currentTime - this.lastSyncedTime) > this.syncThreshold) {
+            console.log('Periodic sync needed - current time differs from last synced time');
             this.handleVideoSeeked();
         }
     }

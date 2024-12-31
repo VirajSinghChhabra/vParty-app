@@ -40,6 +40,28 @@
         }
     }
 
+    // Listen for Netflix player events
+    player.addEventListener('play', () => {
+        window.postMessage({
+            type: 'NETFLIX_PLAY',
+            currentTime: player.getCurrentTime()
+        }, '*');
+    });
+
+    player.addEventListener('pause', () => {
+        window.postMessage({
+            type: 'NETFLIX_PAUSE',
+            currentTime: player.getCurrentTime()
+        }, '*');
+    });
+
+    player.addEventListener('seek', () => {
+        window.postMessage({
+            type: 'NETFLIX_SEEK',
+            currentTime: player.getCurrentTime()
+        }, '*');
+    });
+
     // Listen for messages from content.js
     window.addEventListener('message', (event) => {
         if (event.source !== window) return;

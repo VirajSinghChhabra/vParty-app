@@ -33,6 +33,13 @@
                 seek: (time) => window.postMessage({ type: 'NETFLIX_SEEK', time }, '*'),
                 play: () => window.postMessage({ type: 'NETFLIX_PLAY' }, '*'),
                 pause: () => window.postMessage({ type: 'NETFLIX_PAUSE' }, '*'),
+                addEventListener: (event, callback) => {
+                    window.addEventListener('message', (e) => {
+                        if (e.source === window && e.data.type === `NETFLIX_${event.toUpperCase()}`) {
+                            callback(e.data);
+                        }
+                    });
+                }
             };
 
             console.log('Netflix player API reconstructed in content.js:', netflixPlayerAPI);
