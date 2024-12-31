@@ -81,12 +81,16 @@ class Room {
             console.log('Connection closed');
             this.connection = null;
             this.connectionOpen = false;
-            this.emit('connectionClosed');
+            this.emit('disconnected');
         });
 
         connection.on('data', (data) => {
-            console.log('Data received:', data);
-            this.handleCommand(data);
+            try {
+                const message = JSON.parse(data);
+                this.handleCommand(message);
+            } catch (error) {
+                console.error('Failed to parse data:', error);
+            }
         });
     }
 

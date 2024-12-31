@@ -43,17 +43,16 @@
     // Important to wait until window.netflixPlayerAPI is defined
     function getNetflixPlayer() {
         return new Promise((resolve, reject) => {
-            const checkInterval = 100; // Check every 100ms
-            const maxAttempts = 50;   // Retry up to 50 times (5 seconds)
+            const checkInterval = 100;
+            const maxAttempts = 50;
             let attempts = 0;
-
+    
             const intervalId = setInterval(() => {
-                console.log('Checking Netflix player API (via postMessage):', netflixPlayerAPI);
                 if (netflixPlayerAPI) {
-                    clearInterval(intervalId); // Stop checking
-                    resolve(netflixPlayerAPI); // Return the API
+                    clearInterval(intervalId);
+                    resolve(netflixPlayerAPI);
                 } else if (++attempts >= maxAttempts) {
-                    clearInterval(intervalId); // Stop checking
+                    clearInterval(intervalId);
                     reject(new Error('Netflix player API is not available'));
                 }
             }, checkInterval);
