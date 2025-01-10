@@ -154,10 +154,19 @@
 
     // Create an invite link with the host's playback state
     async function createInviteLink(peerId) {
-        const url = new URL(window.location.href);
-        const player = await getNetflixPlayer(); 
-        const currentTime = await player.getCurrentTime() / 1000 ; // Fetch the current time in ms
-        url.searchParams.set('t', currentTime); // 't' is netflix's time search param
+        // Extract video ID from current URL
+        const currentUrl = window.location.href;
+        const videoIdMatch = currentUrl.match(/watch\/(\d+)/);
+        if (!videoIdMatch) {
+            throw new Error('Could not extract video ID from URL');
+        }
+        const videoId = videoIdMatch[1];
+
+        // Create clean URL with only necessary parameters
+        const url = new URL(`https://www.netflix.com/watch/${videoId}`);
+        const player = await getNetflixPlayer();
+        const currentTime = await player.getCurrentTime();
+        url.searchParams.set('t', Math.floor(currentTime)); // Round down to nearest second 
         url.searchParams.set('watchPartyId', peerId);
         return url.toString();
     }
@@ -197,15 +206,18 @@
             room = await Room.join(peerId);
             room.setVideoPlayer(player);
     
-            // Initial sync from URL param
-            const initialTime = new URLSearchParams(window.location.search).get('t');
-            if (initialTime) {
-                await player.seek(parseInt(initialTime, 10));
-            }
-    
+            // Create video synchronizer first
             videoSync = new VideoSynchronizer(player, room);
     
-            // Request immediate time sync
+            // Get initial time from URL
+            const params = new URLSearchParams(window.location.search);
+            const initialTime = parseInt(params.get('t'), 10);
+            if (!isNaN(initialTime)) {
+                await player.seek(initialTime);
+                console.log('Initial seek to:', initialTime);
+            }
+    
+            // Request immediate time sync after initial seek
             room.sendCommand('REQUEST_TIME_SYNC', {});
     
             await partyState.save({

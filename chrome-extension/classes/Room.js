@@ -131,25 +131,83 @@ class Room {
     }
 
     // Handle incoming commands from peers
-    handleCommand(data) {
+    async handleCommand(data) {
         try {
             console.log('Handling command:', data);
             switch (data.type) {
                 case 'REQUEST_TIME_SYNC':
                     if (this.isHost && this.videoPlayer) {
-                        this.videoPlayer.getCurrentTime()
-                            .then(currentTime => {
-                                console.log('Sending current time to peer:', currentTime);
-                                this.sendCommand('TIME_UPDATE', { currentTime });
-                            })
-                            .catch(err => console.error('Error getting current time:', err));
+                        try {
+                            const currentTime = await this.videoPlayer.getCurrentTime();
+                            const isPaused = await this.videoPlayer.isPaused();
+                            console.log('Host sending time update:', { currentTime, isPaused });
+                            
+                            if (this.connection && this.connectionOpen) {
+                                this.sendCommand('TIME_UPDATE', {
+                                    currentTime,
+                                    isPaused,
+                                    timestamp: Date.now()
+                                });
+                                console.log('Time update sent to peer');
+                            } else {
+                                console.error('Cannot send time update - no connection');
+                            }
+                        } catch (error) {
+                            console.error('Error getting current time:', error);
+                        }
                     }
                     break;
-
+    
                 case 'TIME_UPDATE':
-                    if (!this.isHost) {
-                        console.log('Received time update from host:', data);
-                        this.emit('timeUpdate', data);
+                    if (!this.isHost && this.videoPlayer) {
+                        try {
+                            console.log('Peer received time update:', data);
+                            await this.videoPlayer.seek(data.currentTime);
+                            console.log('Successfully seeked to time:', data.currentTime);
+                            
+                            if (data.isPaused) {
+                                await this.videoPlayer.pause();
+                                console.log('Video paused after sync');
+                            } else {
+                                await this.videoPlayer.play();
+                                console.log('Video played after sync');
+                            }
+                        } catch (error) {
+                            console.error('Failed to sync time and state:', error);
+                        }
+                    }
+                    break;
+        
+                case 'PLAY':
+                    if (!this.isHost && this.videoPlayer) {
+                        try {
+                            await this.videoPlayer.play();
+                            console.log('Video played by command');
+                        } catch (error) {
+                            console.error('Failed to play:', error);
+                        }
+                    }
+                    break;
+    
+                case 'PAUSE':
+                    if (!this.isHost && this.videoPlayer) {
+                        try {
+                            await this.videoPlayer.pause();
+                            console.log('Video paused by command');
+                        } catch (error) {
+                            console.error('Failed to pause:', error);
+                        }
+                    }
+                    break;
+    
+                case 'SEEK':
+                    if (!this.isHost && this.videoPlayer) {
+                        try {
+                            await this.videoPlayer.seek(data.time);
+                            console.log('Video seeked to:', data.time);
+                        } catch (error) {
+                            console.error('Failed to seek:', error);
+                        }
                     }
                     break;
             }
@@ -160,13 +218,18 @@ class Room {
 
     // Handle send commands
     sendCommand(type, data) {
-        if (!this.connectionOpen) {
-            console.warn('Command delayed; connection is not open');
+        if (!this.connection || !this.connectionOpen) {
+            console.error('Cannot send command - no active connection');
             return;
         }
         const message = { type, ...data };
         console.log('Sending command:', message);
-        this.connection.send(message);
+        try {
+            this.connection.send(message);
+            console.log('Command sent successfully');
+        } catch (error) {
+            console.error('Failed to send command:', error);
+        }
     }
 
     on(event, handler) {

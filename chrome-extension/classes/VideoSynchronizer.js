@@ -6,32 +6,67 @@ class VideoSynchronizer {
         this.syncThreshold = 0.5; // 500ms threshold
         this.intervalIds = new Set(); 
         this.timeoutIds = new Set(); 
+        this.lastSyncTime = 0; // To track last sync time
         this.setupListeners();
     }
 
     setupListeners() {
         if (!this.room.isHost) {
             // Initial sync requests
-            for (let i = 0; i < 3; i++) {
-                const timeoutId = setTimeout(() => this.requestTimeSync(), i * 1000);
-                this.timeoutIds.add(timeoutId);
-            }
+            this.requestTimeSync();
             
-            // Regular sync interval
-            const intervalId = setInterval(() => this.requestTimeSync(), 5000);
+            // More syncs with increasing delays 
+            const delays = [1000, 2000, 3000, 5000];
+            delays.forEach(delay => {
+                const timeoutId = setTimeout(() => {
+                    console.log(`Scheduled sync request after ${delay}ms`);
+                    this.requestTimeSync();
+                }, delay);
+                this.timeoutIds.add(timeoutId);
+            });
+
+            const intervalId = setInterval(() => {
+                if (Date.now() - this.lastSyncTime > 5000) {
+                    console.log('Regular interval sync check triggered');
+                    this.requestTimeSync();
+                }
+            }, 5000);
             this.intervalIds.add(intervalId);
+
+            // Video event listeners
+            const videoEvents = ['seeking', 'playing', 'pause', 'seeked'];
+            videoEvents.forEach(event => {
+                this.videoPlayer.addEventListener(event, () => {
+                    console.log(`Video ${event} event triggered, requesting sync`);
+                    this.requestTimeSync();
+                });
+            });
+        }
+
+        // Host event listeners
+        if (this.room.isHost) {
+            this.videoPlayer.addEventListener('play', async () => {
+                const currentTime = await this.videoPlayer.getCurrentTime();
+                console.log('Host: Play event triggered at time:', currentTime);
+                this.room.sendCommand('PLAY', { currentTime });
+            });
+    
+            this.videoPlayer.addEventListener('pause', async () => {
+                const currentTime = await this.videoPlayer.getCurrentTime();
+                console.log('Host: Pause event triggered at time:', currentTime);
+                this.room.sendCommand('PAUSE', { currentTime });
+            });
+    
+            this.videoPlayer.addEventListener('seek', async () => {
+                const currentTime = await this.videoPlayer.getCurrentTime();
+                console.log('Host: Seek event triggered at time:', currentTime);
+                this.room.sendCommand('SEEK', { time: currentTime });
+            });
         }
 
         this.room.on('timeUpdate', async (data) => {
-            if (this.room.isHost) return;
-            
-            try {
-                const currentTime = data.currentTime;
-                console.log('Syncing to host time:', currentTime);
-                await this.videoPlayer.seek(currentTime);
-            } catch (error) {
-                console.error('Failed to sync time:', error);
-            }
+            console.log('Received timeUpdate event with data:', data);
+            await this.handleTimeUpdate(data);
         });
 
         this.room.on('disconnected', () => {
@@ -41,58 +76,86 @@ class VideoSynchronizer {
     }
 
     cleanup() {
-        // Clear all intervals
         this.intervalIds.forEach(intervalId => {
             clearInterval(intervalId);
             console.log('Cleared interval:', intervalId);
         });
         this.intervalIds.clear();
 
-        // Clear all timeouts
         this.timeoutIds.forEach(timeoutId => {
             clearTimeout(timeoutId);
             console.log('Cleared timeout:', timeoutId);
         });
         this.timeoutIds.clear();
 
-        // Remove event listeners if needed
         this.room.eventHandlers = {};
     }
 
     requestTimeSync() {
         if (this.room.connectionOpen && !this.room.isHost) {
             console.log('Requesting time sync from host');
-            this.room.sendCommand('REQUEST_TIME_SYNC', {});
+            this.room.sendCommand('REQUEST_TIME_SYNC', {
+                timestamp: Date.now()  // helps debugging 
+            });
         }
     }
 
-    handleTimeUpdate({ currentTime }) {
+    // Debugging  help from ChatGPT in handleTimeUpdate and handleHostAction, added logs for finding errors as joined user was not executing sync commands after commands exchanged.  
+    async handleTimeUpdate(data) {
         if (this.room.isHost) return;
         
-        console.log('Received time update:', currentTime);
-        this.videoPlayer.seek(currentTime)
-            .then(() => this.videoPlayer.play()) // Auto-play after sync
-            .catch(err => console.error('Failed to sync time:', err));
+        try {
+            console.log('Received time update:', data);
+            this.lastSyncTime = Date.now();
+
+            if (typeof data.currentTime !== 'number') {
+                console.error('Invalid time update data:', data);
+                return;
+            }
+            console.log('Attempting to seek to:', data.currentTime);
+            await this.videoPlayer.seek(data.currentTime);
+            
+            // Handle play/pause state after seeking
+            if (data.isPaused) {
+                console.log('Video should be paused after sync');
+                await this.videoPlayer.pause();
+            } else {
+                console.log('Video should play after sync');
+                await this.videoPlayer.play();
+            }
+            
+            console.log('Successfully synced to time:', data.currentTime);
+        } catch (error) {
+            console.error('Failed to sync time:', error);
+        }
     }
 
     async handleHostAction(data) {
         if (this.room.isHost) return;
 
-        const { type, currentTime } = data;
-        console.log(`Handling host ${type} at time ${currentTime}`);
+        try {
+            const { type, currentTime } = data;
+            console.log(`Processing host action: ${type} at time ${currentTime}`);
 
-        switch (type) {
-            case 'PLAY':
-                await this.videoPlayer.seek(currentTime);
-                await this.videoPlayer.play();
-                break;
-            case 'PAUSE':
-                await this.videoPlayer.seek(currentTime);
-                await this.videoPlayer.pause();
-                break;
-            case 'SEEK':
-                await this.videoPlayer.seek(currentTime);
-                break;
+            switch (type) {
+                case 'PLAY':
+                    console.log('Executing play command');
+                    await this.videoPlayer.seek(currentTime);
+                    await this.videoPlayer.play();
+                    break;
+                case 'PAUSE':
+                    console.log('Executing pause command');
+                    await this.videoPlayer.seek(currentTime);
+                    await this.videoPlayer.pause();
+                    break;
+                case 'SEEK':
+                    console.log('Executing seek command');
+                    await this.videoPlayer.seek(currentTime);
+                    break;
+            }
+            console.log(`Successfully executed ${type} command`);
+        } catch (error) {
+            console.error('Failed to handle host action:', error);
         }
     }
 
