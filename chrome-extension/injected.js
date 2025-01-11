@@ -157,7 +157,6 @@
                     const isPaused = await player.isPaused();
                     console.log('Current state:', {
                         currentTime,
-                        timeFormatted: formatTime(currentTime),
                         isPaused
                     });
                     window.postMessage({

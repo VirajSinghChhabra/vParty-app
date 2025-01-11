@@ -5,6 +5,8 @@
 // Simplify content.js and move stuff to other files for better handling, readibility flow and error handling etc. 
 // Calm down. I can do this. Good luck. 
 
+// 11 Jan '25. I DID IT. THE VIDEO SYNC IS WORKINGGGG CORRECTLY. FINALLY, YESS!!
+
 (() => {
     let netflixPlayerAPI = null;
     let room = null;
@@ -87,7 +89,7 @@
                 });
             },
     
-            isPaused: () => {
+            isPaused: async () => {
                 return new Promise((resolve) => {
                     const listener = (event) => {
                         if (event.source === window && event.data.type === 'NETFLIX_TIME_UPDATE') {
@@ -138,10 +140,10 @@
                             return timeMs; 
                         },
     
-                        seek: async (timeInSeconds) => {
-                            console.log('Seeking to:', timeInSeconds, 'seconds');
+                        seek: async (timeMs) => {
+                            console.log('Seeking to time (ms):', timeMs);
                             // Netflix API expects milliseconds
-                            await netflixPlayerAPI.seek(timeInSeconds * 1000);
+                            await netflixPlayerAPI.seek(timeMs);
                         },
     
                         play: async () => {
@@ -155,8 +157,16 @@
                         },
     
                         isPaused: async () => {
-                            const state = await netflixPlayerAPI.getState();
-                            return state.isPaused;
+                            return new Promise((resolve) => {
+                                const listener = (event) => {
+                                    if (event.source === window && event.data.type === 'NETFLIX_TIME_UPDATE') {
+                                        window.removeEventListener('message', listener);
+                                        resolve(event.data.isPaused);
+                                    }
+                                };
+                                window.addEventListener('message', listener);
+                                window.postMessage({ type: 'NETFLIX_GET_TIME' }, '*');
+                            });
                         },
     
                         addEventListener: (event, callback) => {
