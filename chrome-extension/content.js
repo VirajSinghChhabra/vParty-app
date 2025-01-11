@@ -102,10 +102,72 @@
             const intervalId = setInterval(() => {
                 if (netflixPlayerAPI) {
                     clearInterval(intervalId);
-                    resolve(netflixPlayerAPI);
+    
+                    // Store event listeners
+                    const eventListeners = new Map();
+    
+                    // Wrap the API to ensure consistent time handling
+                    const wrappedPlayer = {
+                        getCurrentTime: async () => {
+                            const timeMs = await netflixPlayerAPI.getCurrentTime();
+                            return timeMs / 1000; // Convert from milliseconds to seconds
+                        },
+    
+                        seek: async (timeInSeconds) => {
+                            console.log('Seeking to:', timeInSeconds, 'seconds');
+                            // Netflix API expects milliseconds
+                            await netflixPlayerAPI.seek(timeInSeconds * 1000);
+                        },
+    
+                        play: async () => {
+                            console.log('Playing video');
+                            await netflixPlayerAPI.play();
+                        },
+    
+                        pause: async () => {
+                            console.log('Pausing video');
+                            await netflixPlayerAPI.pause();
+                        },
+    
+                        isPaused: async () => {
+                            const state = await netflixPlayerAPI.getState();
+                            return state.isPaused;
+                        },
+    
+                        addEventListener: (event, callback) => {
+                            // Create wrapper for the callback to handle time conversion
+                            const wrappedCallback = async (eventData) => {
+                                if (eventData && eventData.currentTime) {
+                                    eventData.currentTime = eventData.currentTime / 1000;
+                                }
+                                callback(eventData);
+                            };
+    
+                            // Store the original and wrapped callbacks
+                            if (!eventListeners.has(event)) {
+                                eventListeners.set(event, new Map());
+                            }
+                            eventListeners.get(event).set(callback, wrappedCallback);
+    
+                            // Add the actual event listener
+                            netflixPlayerAPI.addEventListener(event, wrappedCallback);
+                        },
+    
+                        removeEventListener: (event, callback) => {
+                            if (eventListeners.has(event)) {
+                                const wrappedCallback = eventListeners.get(event).get(callback);
+                                if (wrappedCallback) {
+                                    netflixPlayerAPI.removeEventListener(event, wrappedCallback);
+                                    eventListeners.get(event).delete(callback);
+                                }
+                            }
+                        }
+                    };
+    
+                    resolve(wrappedPlayer);
                 } else if (++attempts >= maxAttempts) {
                     clearInterval(intervalId);
-                    reject(new Error('Netflix player API is not available'));
+                    reject(new Error('Netflix player API not available'));
                 }
             }, checkInterval);
         });
@@ -152,21 +214,18 @@
         });
     }
 
-    // Create an invite link with the host's playback state
     async function createInviteLink(peerId) {
-        // Extract video ID from current URL
         const currentUrl = window.location.href;
         const videoIdMatch = currentUrl.match(/watch\/(\d+)/);
         if (!videoIdMatch) {
             throw new Error('Could not extract video ID from URL');
         }
         const videoId = videoIdMatch[1];
-
-        // Create clean URL with only necessary parameters
+    
         const url = new URL(`https://www.netflix.com/watch/${videoId}`);
         const player = await getNetflixPlayer();
-        const currentTime = await player.getCurrentTime();
-        url.searchParams.set('t', Math.floor(currentTime)); // Round down to nearest second 
+        const timeInSeconds = Math.floor(await player.getCurrentTime());
+        url.searchParams.set('t', timeInSeconds);
         url.searchParams.set('watchPartyId', peerId);
         return url.toString();
     }
@@ -211,10 +270,10 @@
     
             // Get initial time from URL
             const params = new URLSearchParams(window.location.search);
-            const initialTime = parseInt(params.get('t'), 10);
-            if (!isNaN(initialTime)) {
-                await player.seek(initialTime);
-                console.log('Initial seek to:', initialTime);
+            const initialTimeSeconds = parseInt(params.get('t'), 10);
+            if (!isNaN(initialTimeSeconds)) {
+                console.log('Initial seek to:', initialTimeSeconds, 'seconds');
+                await player.seek(initialTimeSeconds);
             }
     
             // Request immediate time sync after initial seek

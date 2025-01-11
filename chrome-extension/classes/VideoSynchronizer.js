@@ -3,167 +3,241 @@ class VideoSynchronizer {
     constructor(player, room) {
         this.videoPlayer = player;
         this.room = room;
-        this.syncThreshold = 0.5; // 500ms threshold
-        this.intervalIds = new Set(); 
-        this.timeoutIds = new Set(); 
-        this.lastSyncTime = 0; // To track last sync time
+        this.syncThreshold = 2; // 2 seconds
+        this.intervalIds = new Set();
+        this.timeoutIds = new Set();
+        this.lastSyncTime = 0;
+        this.isSyncing = false;
+        this.isHandlingEvent = false;
+        console.log('VideoSynchronizer initialized:', {
+            isHost: this.room.isHost,
+            player: !!this.videoPlayer
+        });
         this.setupListeners();
     }
 
     setupListeners() {
-        if (!this.room.isHost) {
-            // Initial sync requests
-            this.requestTimeSync();
-            
-            // More syncs with increasing delays 
-            const delays = [1000, 2000, 3000, 5000];
-            delays.forEach(delay => {
-                const timeoutId = setTimeout(() => {
-                    console.log(`Scheduled sync request after ${delay}ms`);
-                    this.requestTimeSync();
-                }, delay);
-                this.timeoutIds.add(timeoutId);
-            });
-
-            const intervalId = setInterval(() => {
-                if (Date.now() - this.lastSyncTime > 5000) {
-                    console.log('Regular interval sync check triggered');
-                    this.requestTimeSync();
-                }
-            }, 5000);
-            this.intervalIds.add(intervalId);
-
-            // Video event listeners
-            const videoEvents = ['seeking', 'playing', 'pause', 'seeked'];
-            videoEvents.forEach(event => {
-                this.videoPlayer.addEventListener(event, () => {
-                    console.log(`Video ${event} event triggered, requesting sync`);
-                    this.requestTimeSync();
-                });
-            });
-        }
-
-        // Host event listeners
         if (this.room.isHost) {
-            this.videoPlayer.addEventListener('play', async () => {
-                const currentTime = await this.videoPlayer.getCurrentTime();
-                console.log('Host: Play event triggered at time:', currentTime);
-                this.room.sendCommand('PLAY', { currentTime });
-            });
-    
-            this.videoPlayer.addEventListener('pause', async () => {
-                const currentTime = await this.videoPlayer.getCurrentTime();
-                console.log('Host: Pause event triggered at time:', currentTime);
-                this.room.sendCommand('PAUSE', { currentTime });
-            });
-    
-            this.videoPlayer.addEventListener('seek', async () => {
-                const currentTime = await this.videoPlayer.getCurrentTime();
-                console.log('Host: Seek event triggered at time:', currentTime);
-                this.room.sendCommand('SEEK', { time: currentTime });
-            });
+            console.log('Setting up host listeners');
+            this.setupHostListeners();
+        } else {
+            console.log('Setting up client listeners');
+            this.setupClientListeners();
         }
 
+        // Common listeners
         this.room.on('timeUpdate', async (data) => {
-            console.log('Received timeUpdate event with data:', data);
             await this.handleTimeUpdate(data);
         });
 
         this.room.on('disconnected', () => {
-            console.log('Room disconnected, cleaning up...');
+            console.log('Cleaning up synchronizer');
             this.cleanup();
         });
     }
 
-    cleanup() {
-        this.intervalIds.forEach(intervalId => {
-            clearInterval(intervalId);
-            console.log('Cleared interval:', intervalId);
-        });
-        this.intervalIds.clear();
+    setupHostListeners() {
+        console.log('Setting up host listeners');
+        const videoEvents = ['play', 'pause', 'seeking', 'seeked'];
 
-        this.timeoutIds.forEach(timeoutId => {
-            clearTimeout(timeoutId);
-            console.log('Cleared timeout:', timeoutId);
-        });
-        this.timeoutIds.clear();
+        videoEvents.forEach(event => {
+            this.videoPlayer.addEventListener(event, async () => {
+                if (!this.room.connectionOpen || this.isHandlingEvent) return;
+                
+                try {
+                    const currentTime = await this.videoPlayer.getCurrentTime();
+                    const isPaused = await this.videoPlayer.isPaused();
+                    
+                    console.log(`Host: ${event} event detected, broadcasting state:`, {
+                        currentTime,
+                        isPaused,
+                        event
+                    });
 
-        this.room.eventHandlers = {};
+                    this.room.sendCommand('TIME_UPDATE', {
+                        currentTime,
+                        isPaused,
+                        event,
+                        timestamp: Date.now()
+                    });
+                } catch (error) {
+                    console.error(`Error broadcasting ${event} state:`, error);
+                }
+            });
+        });
+
+        // Handle time sync requests from clients
+        this.room.on('REQUEST_TIME_SYNC', async () => {
+            if (!this.room.connectionOpen) return;
+            
+            try {
+                const currentTime = await this.videoPlayer.getCurrentTime();
+                const isPaused = await this.videoPlayer.isPaused();
+                
+                console.log('Host: Sending current state in response to sync request:', {
+                    currentTime,
+                    isPaused
+                });
+
+                this.room.sendCommand('TIME_UPDATE', {
+                    currentTime,
+                    isPaused,
+                    event: 'sync',
+                    timestamp: Date.now()
+                });
+            } catch (error) {
+                console.error('Error handling sync request:', error);
+            }
+        });
+
+        // Regular state broadcast every 5 seconds
+        const broadcastInterval = setInterval(async () => {
+            if (!this.room.connectionOpen) return;
+            
+            try {
+                const currentTime = await this.videoPlayer.getCurrentTime();
+                const isPaused = await this.videoPlayer.isPaused();
+                
+                console.log('Host: Regular state broadcast:', {
+                    currentTime,
+                    isPaused
+                });
+
+                this.room.sendCommand('TIME_UPDATE', {
+                    currentTime,
+                    isPaused,
+                    event: 'periodic',
+                    timestamp: Date.now()
+                });
+            } catch (error) {
+                console.error('Error in periodic state broadcast:', error);
+            }
+        }, 5000);
+
+        this.intervalIds.add(broadcastInterval);
+    }
+
+    setupClientListeners() {
+        console.log('Setting up client listeners');
+        
+        // Initial sync with connection check
+        setTimeout(() => this.performInitialSync(), 1000);
+        
+        // Regular sync check interval
+        const syncCheckInterval = setInterval(() => {
+            if (this.room.connectionOpen && !this.isHandlingEvent && 
+                Date.now() - this.lastSyncTime > 5000) {
+                console.log('Client: Regular sync check - requesting sync');
+                this.requestTimeSync();
+            }
+        }, 5000);
+        this.intervalIds.add(syncCheckInterval);
+
+        // Listen for local video events
+        const videoEvents = ['seeking', 'play', 'pause', 'seeked'];
+        videoEvents.forEach(event => {
+            this.videoPlayer.addEventListener(event, () => {
+                // Only request sync if this event wasn't triggered by our sync operation
+                if (!this.isHandlingEvent) {
+                    console.log(`Client: Local ${event} detected (user initiated), requesting sync`);
+                    this.requestTimeSync();
+                } else {
+                    console.log(`Client: Ignoring ${event} event - triggered by sync operation`);
+                }
+            });
+        });
+    }
+
+    async performInitialSync() {
+        if (!this.room.connectionOpen) {
+            console.log('Waiting for connection to be ready...');
+            const timeoutId = setTimeout(() => this.performInitialSync(), 500);
+            this.timeoutIds.add(timeoutId);
+            return;
+        }
+
+        try {
+            this.isHandlingEvent = true;
+            console.log('Performing initial sync');
+            await this.requestTimeSync();
+        } finally {
+            this.isHandlingEvent = false;
+        }
+    }
+
+    async handleTimeUpdate(data) {
+        if (this.room.isHost) {
+            console.log('Host: Ignoring time update');
+            return;
+        }
+
+        if (!data || typeof data.currentTime !== 'number') {
+            console.error('Invalid time update data:', data);
+            return;
+        }
+
+        try {
+            this.lastSyncTime = Date.now();
+            const currentTime = await this.videoPlayer.getCurrentTime();
+            const timeDiff = Math.abs(currentTime - data.currentTime);
+
+            console.log('Time comparison:', {
+                currentTime,
+                hostTime: data.currentTime,
+                difference: timeDiff,
+                threshold: this.syncThreshold
+            });
+
+            if (timeDiff > this.syncThreshold) {
+                this.isHandlingEvent = true;
+                console.log('Time difference exceeds threshold, syncing to:', data.currentTime);
+                
+                await this.videoPlayer.seek(data.currentTime);
+                
+                const isPaused = await this.videoPlayer.isPaused();
+                if (isPaused !== data.isPaused) {
+                    if (data.isPaused) {
+                        console.log('Pausing video to match host');
+                        await this.videoPlayer.pause();
+                    } else {
+                        console.log('Playing video to match host');
+                        await this.videoPlayer.play();
+                    }
+                }
+                
+                console.log('Sync completed');
+            } else {
+                console.log('Time difference within threshold, no sync needed');
+            }
+        } catch (error) {
+            console.error('Error handling time update:', error);
+        } finally {
+            this.isHandlingEvent = false;
+        }
     }
 
     requestTimeSync() {
-        if (this.room.connectionOpen && !this.room.isHost) {
-            console.log('Requesting time sync from host');
+        if (!this.room.isHost && this.room.connectionOpen) {
+            console.log('Client: Requesting time sync from host');
             this.room.sendCommand('REQUEST_TIME_SYNC', {
-                timestamp: Date.now()  // helps debugging 
+                timestamp: Date.now(),
+                lastSyncTime: this.lastSyncTime
             });
+        } else {
+            console.log('Client: Cannot request sync - no connection or is host');
         }
     }
 
-    // Debugging  help from ChatGPT in handleTimeUpdate and handleHostAction, added logs for finding errors as joined user was not executing sync commands after commands exchanged.  
-    async handleTimeUpdate(data) {
-        if (this.room.isHost) return;
-        
-        try {
-            console.log('Received time update:', data);
-            this.lastSyncTime = Date.now();
-
-            if (typeof data.currentTime !== 'number') {
-                console.error('Invalid time update data:', data);
-                return;
-            }
-            console.log('Attempting to seek to:', data.currentTime);
-            await this.videoPlayer.seek(data.currentTime);
-            
-            // Handle play/pause state after seeking
-            if (data.isPaused) {
-                console.log('Video should be paused after sync');
-                await this.videoPlayer.pause();
-            } else {
-                console.log('Video should play after sync');
-                await this.videoPlayer.play();
-            }
-            
-            console.log('Successfully synced to time:', data.currentTime);
-        } catch (error) {
-            console.error('Failed to sync time:', error);
-        }
-    }
-
-    async handleHostAction(data) {
-        if (this.room.isHost) return;
-
-        try {
-            const { type, currentTime } = data;
-            console.log(`Processing host action: ${type} at time ${currentTime}`);
-
-            switch (type) {
-                case 'PLAY':
-                    console.log('Executing play command');
-                    await this.videoPlayer.seek(currentTime);
-                    await this.videoPlayer.play();
-                    break;
-                case 'PAUSE':
-                    console.log('Executing pause command');
-                    await this.videoPlayer.seek(currentTime);
-                    await this.videoPlayer.pause();
-                    break;
-                case 'SEEK':
-                    console.log('Executing seek command');
-                    await this.videoPlayer.seek(currentTime);
-                    break;
-            }
-            console.log(`Successfully executed ${type} command`);
-        } catch (error) {
-            console.error('Failed to handle host action:', error);
-        }
-    }
-
-    // Also periodically sync video current times in case someone is left behind/new person joins
-    // Although note for self - current implementation lets multiple users join, I think this setup is better for 1 to 1 watch sessions
-    // Hopefully these checks don't crash netflix 
-    async checkSync() {
-        if (this.room.isHost || !this.room.connectionOpen) return;
-        this.room.sendCommand('REQUEST_TIME_SYNC', {});
+    cleanup() {
+        this.intervalIds.forEach(id => {
+            clearInterval(id);
+            console.log('Cleared interval:', id);
+        });
+        this.timeoutIds.forEach(id => {
+            clearTimeout(id);
+            console.log('Cleared timeout:', id);
+        });
+        this.intervalIds.clear();
+        this.timeoutIds.clear();
     }
 }
