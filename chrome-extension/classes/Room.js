@@ -142,27 +142,20 @@ class Room {
             console.log('Room: Ignoring command - not in party');
             return;
         }
-
+    
         try {
             console.log('Room: Processing command:', data);
             
             switch (data.type) {
-                case 'REQUEST_TIME_SYNC':
-                    this.emit('REQUEST_TIME_SYNC', data);
+                case 'REQUEST_SYNC':
+                case 'REQUEST_TIME_SYNC': // Handle both versions of the command
+                    this.emit('REQUEST_SYNC', data);
                     break;
-
-                case 'TIME_UPDATE':
-                    this.emit('timeUpdate', data);
+    
+                case 'VIDEO_STATE':
+                    this.emit('VIDEO_STATE', data);
                     break;
-
-                case 'PLAY':
-                case 'PAUSE':
-                case 'SEEK':
-                    if (!this.isHost && this.videoPlayer) {
-                        this.emit('hostCommand', data);
-                    }
-                    break;
-
+    
                 default:
                     console.warn('Room: Unknown command type:', data.type);
                     break;

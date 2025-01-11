@@ -31,25 +31,21 @@
                 // Verify we got the correct player
                 const currentTime = player.getCurrentTime();
                 const isPaused = player.isPaused();
-                const duration = player.getDuration();
 
-                console.log('Netflix player API initialized:', {
-                    sessionId: mainPlayerSessionId,
-                    currentTime,
-                    isPaused,
-                    duration,
-                    timeFormatted: formatTime(currentTime)
-                });
-
-                setupPlayerEventListeners(player);
-
-                window.postMessage({
-                    type: 'NETFLIX_PLAYER_API_READY',
+                console.log('Netflix player initialized:', {
                     sessionId: mainPlayerSessionId,
                     currentTime,
                     isPaused
+                });
+
+                // Send ready message with initial state
+                window.postMessage({
+                    type: 'NETFLIX_PLAYER_READY',
+                    sessionId: mainPlayerSessionId
                 }, '*');
 
+                // Set up message listener for player commands
+                window.addEventListener('message', handlePlayerCommands);
                 return;
             }
         } catch (error) {
@@ -60,78 +56,67 @@
         }
     }
 
-    function formatTime(seconds) {
-        if (typeof seconds !== 'number' || isNaN(seconds)) return '0:00:00';
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    }
 
-    function setupPlayerEventListeners(player) {
-        let lastTimeUpdate = null;
-        let lastTimeUpdateSent = 0;
-        const timeUpdateInterval = 250; // 250ms intervals between updates
-
-        setInterval(async () => {
-            if (isHandlingCommand) return; // skip if handling command already 
-
-            try {
-                const currentTime = await player.getCurrentTime();
-                const isPaused = await player.isPaused();
-                
-                const now = Date.now();
-                if (currentTime !== lastTimeUpdate && now - lastTimeUpdateSent >= timeUpdateInterval) {
-                    console.log('Time update:', {
-                        currentTime,
-                        timeFormatted: formatTime(currentTime),
-                        isPaused
-                    });
-
-                    window.postMessage({
-                        type: 'NETFLIX_TIMEUPDATE',
-                        currentTime,
-                        isPaused,
-                        timestamp: now
-                    }, '*');
-
-                    lastTimeUpdate = currentTime;
-                    lastTimeUpdateSent = now;
-                }
-            } catch (error) {
-                console.error('Error in time update check:', error);
-            }
-        }, timeUpdateInterval);
-
-        // Handle player events
-        const events = ['play', 'pause', 'seeking', 'seeked'];
-        events.forEach(eventName => {
-            player.addEventListener(eventName, async () => {
-                if (isHandlingCommand) {
-                    console.log(`Skipping ${eventName} event - triggered by command`);
-                    return;
-                }
-
-                try {
-                    const currentTime = await player.getCurrentTime();
-                    const isPaused = await player.isPaused();
-                    console.log(`Natural ${eventName} event:`, {
-                        currentTime,
-                        timeFormatted: formatTime(currentTime),
-                        isPaused
-                    });
-                    
-                    window.postMessage({
-                        type: `NETFLIX_${eventName.toUpperCase()}`,
+    async function handlePlayerCommands(event) {
+        if (event.source !== window || !player) return;
+    
+        try {
+            const { type, time } = event.data;
+            let response = null;
+    
+            switch (type) {
+                case 'NETFLIX_GET_TIME':
+                    const currentTime = player.getCurrentTime();
+                    const isPaused = player.isPaused();
+                    response = {
+                        type: 'NETFLIX_TIME_UPDATE',
                         currentTime,
                         isPaused,
                         timestamp: Date.now()
-                    }, '*');
-                } catch (error) {
-                    console.error(`Error handling ${eventName} event:`, error);
-                }
-            });
-        });
+                    };
+                    console.log('Time update:', { currentTime, isPaused });
+                    break;
+    
+                case 'NETFLIX_SEEK':
+                    await player.seek(time);
+                    response = {
+                        type: 'NETFLIX_SEEK_COMPLETE',
+                        currentTime: player.getCurrentTime(),
+                        timestamp: Date.now()
+                    };
+                    console.log('Seek completed to:', time);
+                    break;
+    
+                case 'NETFLIX_PLAY':
+                    await player.play();
+                    response = {
+                        type: 'NETFLIX_PLAY_COMPLETE',
+                        timestamp: Date.now()
+                    };
+                    console.log('Play command executed');
+                    break;
+    
+                case 'NETFLIX_PAUSE':
+                    await player.pause();
+                    response = {
+                        type: 'NETFLIX_PAUSE_COMPLETE',
+                        timestamp: Date.now()
+                    };
+                    console.log('Pause command executed');
+                    break;
+            }
+    
+            if (response) {
+                window.postMessage(response, '*');
+            }
+        } catch (error) {
+            console.error('Error executing command:', error);
+            window.postMessage({
+                type: 'NETFLIX_ERROR',
+                error: error.message,
+                timestamp: Date.now()
+            }, '*');
+        }
     }
 
     // Handle commands from content script
@@ -147,13 +132,13 @@
                 case 'NETFLIX_SEEK':
                     console.log('Executing seek command:', {
                         time,
-                        timeFormatted: formatTime(time)
+                        // timeFormatted: formatTime(time)
                     });
                     await player.seek(time);
                     const newTime = await player.getCurrentTime();
                     console.log('Seek completed:', {
                         time: newTime,
-                        timeFormatted: formatTime(newTime)
+                        // timeFormatted: formatTime(newTime)
                     });
                     break;
 
