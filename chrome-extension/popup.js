@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const disconnectBtn = document.getElementById('disconnect-btn');
     const logoutBtn = document.getElementById('logout-btn');
     const selectVideoMsg = document.getElementById('select-video-msg');
+    const settingsBtn = document.getElementById('settings-btn');
     const ToggleSidebarBtn = document.getElementById('toggle-sidebar'); 
     //const chatContainer = document.getElementById('chat-container'); 
 
@@ -257,6 +258,10 @@ document.addEventListener('DOMContentLoaded', function() {
         chrome.tabs.create({ url: 'http://localhost:3000/settings' });
     });
 
+    // Settings button event (takes you to the same user profile/settings page)
+    settingsBtn.addEventListener('click', function() {
+        chrome.tabs.create({ url: 'http://localhost:3000/settings' });
+    });
     // Start a new watch party (modified for testing for better error handling)
     startPartyBtn.addEventListener('click', function() {
         chrome.tabs.query({ active: true, currentWindow: true}, function(tabs) {
