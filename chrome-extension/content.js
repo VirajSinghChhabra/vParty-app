@@ -283,6 +283,7 @@
                 peerId: room.peerId,
                 isHost: true,
                 lastKnownTime: await player.getCurrentTime(),
+                inviteLink: inviteLink
             });
     
             console.log('Party started successfully. Invite link:', inviteLink);
@@ -314,10 +315,12 @@
             // Request immediate time sync after initial seek
             room.sendCommand('REQUEST_TIME_SYNC', {});
     
+            const inviteLink = window.location.href;
             await partyState.save({
                 isInParty: true,
                 peerId,
                 isHost: false,
+                inviteLink: inviteLink
             });
     
             console.log('Successfully joined the party');
@@ -353,6 +356,7 @@
                 return {
                     hasVideo: !!detectVideo(),
                     isInParty: state?.isInParty || false,
+                    inviteLink: state?.inviteLink
                 };
             },
             'startParty': async () => {

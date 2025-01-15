@@ -100,9 +100,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
                 updateUI(loggedIn, !!detectVideo(), isInParty);
         
-                if (isInParty && isHost) {
-                    const inviteLink = `${window.location.href.split('?')[0]}?t=${partyState.lastKnownTime}&watchPartyId=${partyState.peerId}`;
-                    document.getElementById('invite-link').value = inviteLink;
+                if (isInParty) {
+                    const inviteLink = partyState.inviteLink;
+                    inviteLinkInput.value = inviteLink;
                 }
             });
         });

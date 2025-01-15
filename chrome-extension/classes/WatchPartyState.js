@@ -7,7 +7,10 @@ class WatchPartyState {
     async save(state) {
         return new Promise((resolve, reject) => {
             try {
-                chrome.storage.local.set({ [this.stateKey]: state }, () => {
+                chrome.storage.local.set({ [this.stateKey]: {
+                    ...state,
+                    inviteLink: state.inviteLink 
+                }}, () => {
                     console.log('Party state saved:', state);
                     resolve(state);
                 });
