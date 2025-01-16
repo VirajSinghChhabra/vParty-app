@@ -92,17 +92,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            // If no valid UI state, check party state
-            chrome.storage.local.get(['partyState'], function (result) {
-                const partyState = result.partyState || {};
-                const isInParty = partyState.isInParty || false;
-                const isHost = partyState.isHost || false;
-        
-                updateUI(loggedIn, !!detectVideo(), isInParty);
-        
-                if (isInParty) {
-                    const inviteLink = partyState.inviteLink;
-                    inviteLinkInput.value = inviteLink;
+            // Use WatchPartyState class to get party state
+            const partyState = new WatchPartyState();
+            partyState.load().then(state => {
+                if (state) {
+                    const isInParty = state.isInParty || false;
+                    updateUI(loggedIn, !!detectVideo(), isInParty);
+
+                    // Set invite link if it exists
+                    if (state.inviteLink) {
+                        inviteLinkInput.value = state.inviteLink;
+                    }
                 }
             });
         });
@@ -191,8 +191,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             updateUI(true, false, false);
                         } else {
                             const hasVideo = response?.hasVideo || false;
-                            const isInParty = response?.isInParty || false
+                            const isInParty = response?.isInParty || false;
+                            const inviteLink = response?.inviteLink;
                             updateUI(true, hasVideo, isInParty);
+                            if (inviteLink) {
+                                inviteLinkInput.value = inviteLink;
+                            }
                         }
                     });
                 });
