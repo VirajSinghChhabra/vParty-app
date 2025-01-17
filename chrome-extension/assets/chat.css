@@ -29,43 +29,57 @@
     flex: 1;
     overflow-y: auto;
     padding: 15px;
+    font-size: 16px !important;
 }
 
 .chat-message {
-    margin-bottom: 10px;
-    color: #fff;
-    font-size: 14px;
-    word-wrap: break-word;
+    margin-bottom: 12px !important;
+    color: #fff !important;
+    font-size: 16px !important;
+    word-wrap: break-word !important;
+    line-height: 1.4 !important;
+    padding: 4px 0 !important;
+    font-family: Netflix Sans, Helvetica Neue, Segoe UI, Roboto, Ubuntu, sans-serif !important;
 }
 
 .username {
-    color: #e50914;
-    font-weight: bold;
+    color: #e50914 !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
 }
 
 .chat-input-container {
-    padding: 15px;
+    padding: 0.3px;
     border-top: 1px solid #333;
 }
 
 .chat-input {
-    width: 100%;
-    padding: 8px;
-    background: #333;
-    border: none;
-    color: white;
-    border-radius: 4px;
-    margin-bottom: 8px;
+    width: 100% !important;
+    padding: 10px !important;
+    background: #333 !important;
+    border: none !important;
+    color: white !important;
+    border-radius: 4px !important;
+    margin-bottom: 8px !important;
+    font-size: 16px !important;
+    font-family: Netflix Sans, Helvetica Neue, Segoe UI, Roboto, Ubuntu, sans-serif !important;
+}
+
+.chat-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.5);
 }
 
 .send-button {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
     background: #e50914;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .send-button:hover {
@@ -94,4 +108,17 @@
     cursor: pointer;
     font-size: 18px;
     padding: 5px;
+}
+
+.messages-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+    background: #141414;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+    background: #e50914;
+    border-radius: 4px;
 }

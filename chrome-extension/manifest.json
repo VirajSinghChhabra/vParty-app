@@ -28,6 +28,7 @@
                 "classes/VideoSynchronizer.js",
                 "classes/WatchPartyState.js",
                 "classes/ConnectionManager.js",
+                "classes/ChatManager.js",
                 "content.js"
             ]
         }

@@ -1,7 +1,7 @@
 class ChatManager {
     constructor(room) {
         this.room = room;
-        this.message = [];
+        this.messages = [];
         this.username = '';
         this.initialized = false;
         this.setupChatUI();
@@ -14,7 +14,7 @@ class ChatManager {
         this.chatContainer.id = 'watch-party-chat';
         this.chatContainer.innerHTML = `
         <div class="chat-header">
-            <h3>Watch Party Chat</h3>
+            <h3>Party Chat</h3>
             <button class="toggle-chat">→</button>
         </div>
         <div class="messages-container"></div>
@@ -72,9 +72,9 @@ class ChatManager {
         };
 
         try {
-            await this.room.sendCommand(message);
-            this.displayMessage(message);
             this.input.value = '';
+            await this.room.sendCommand('CHAT_MESSAGE', message);
+            this.displayMessage(message);
         } catch (error) {
             console.error('Failed to send message:', error);
         }
@@ -88,7 +88,7 @@ class ChatManager {
         this.messagesContainer.appendChild(messageDiv);
         this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
 
-        this.messagesContainer.push(message);
+        this.messages.push(message);
     }
 
     toggleChat() {
