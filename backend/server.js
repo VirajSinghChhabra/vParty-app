@@ -44,7 +44,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(express.urlencoded({ extended: true }));
 
-// Register route GET method
+// Website route GET method (for popup Logo)
+app.get('/index', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/pages/index.html'));
+});
+
+// Settings route GET method
 app.get('/settings', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/pages/settings.html'));
 });

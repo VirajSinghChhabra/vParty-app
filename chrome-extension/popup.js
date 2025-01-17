@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const logoutBtn = document.getElementById('logout-btn');
     const selectVideoMsg = document.getElementById('select-video-msg');
     const settingsBtn = document.getElementById('settings-btn');
+    const logoImg = document.getElementById('logo-img');
     const ToggleSidebarBtn = document.getElementById('toggle-sidebar'); 
     //const chatContainer = document.getElementById('chat-container'); 
 
@@ -364,6 +365,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Redirect button event 
     redirectBtn.addEventListener('click', function() {
         chrome.tabs.create({ url: 'https://www.netflix.com' });
+    });
+
+    // Logo button (redirect to website/index page)
+    logoImg.addEventListener('click', function() {
+        chrome.tabs.create({ url: 'http://localhost:3000/index' });
     });
 
     // Function to parse JWT and extract user info for displaying in header of the popup
