@@ -36,6 +36,7 @@
         {
             "resources": [
                     "*./js",
+                    "assets/chat.css",
                     "injected.js"
             ],
             "matches": [

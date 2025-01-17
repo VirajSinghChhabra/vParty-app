@@ -277,6 +277,10 @@
             videoSync = new VideoSynchronizer(player, room);
             console.log('Video synchronizer initialized');
     
+            const username = await getUserName();
+            const chatManager = new ChatManager(room);
+            chatManager.setUsername(username);
+
             inviteLink = await createInviteLink(room.peerId);
             await partyState.save({
                 isInParty: true,
@@ -315,11 +319,17 @@
             // Request immediate time sync after initial seek
             room.sendCommand('REQUEST_TIME_SYNC', {});
     
+            // Initialize chat sidebar
+            const username = await getUserName();
+            chatManager = new ChatManager(room);
+            chatManager.setUsername(username);
+
             const inviteLink = window.location.href;
             await partyState.save({
                 isInParty: true,
                 peerId,
                 isHost: false,
+                username: username,
                 inviteLink: inviteLink
             });
     
@@ -346,6 +356,33 @@
             console.error('Error disconnecting:', error);
             throw error;
         }
+    }
+
+    // Helper function to get usename for the chat sidebar 
+    // (same way like I get user info from storage for the popup)
+    async function getUserName() {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['token'], async function(result) {
+                if (!result.token) {
+                    resolve('Guest');
+                    return;
+                }
+    
+                try {
+                    const response = await fetch('http://localhost:3000/user', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${result.token}`
+                        }
+                    });
+                    const data = await response.json();
+                    resolve(data.name || 'Guest');
+                } catch (error) {
+                    console.error('Error fetching username:', error);
+                    resolve('Guest');
+                }
+            });
+        });
     }
 
     // Message handlers

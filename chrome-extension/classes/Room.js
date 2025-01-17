@@ -156,6 +156,14 @@ class Room {
                     this.emit('VIDEO_STATE', data);
                     break;
     
+                case 'CHAT_MESSAGE':
+                    this.emit('CHAT_MESSAGE', {
+                        text: data.text,
+                        username: data.username,
+                        timestamp: data.timestamp
+                    });          
+                    break;
+
                 default:
                     console.warn('Room: Unknown command type:', data.type);
                     break;

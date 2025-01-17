@@ -17,10 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
     //const chatContainer = document.getElementById('chat-container'); 
 
     let peerId = null; 
-    let shadowRoot = null; // Shadow DOM root for chat sidebar
-    
-    // Initialize chat sidebar
-    //initializeChatSidebar();
 
     // Function to check if user is logged in and has valid token
     async function isUserLoggedIn() {
@@ -30,48 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    // Function to initialize the Shadow DOM for chat sidebar
-    //function initializeChatSidebar() {
-    //    const chatHost = document.createElement('div');
-    //    chatHost.setAttribute('id', 'chat-sidebar');
-    //    chatContainer.appendChild(chatHost);
-//
-    //    shadowRoot = chatHost.attachShadow({ mode: 'open' });
-    //    shadowRoot.innerHTML = `
-    //        <style>
-    //            #chat-container {
-    //                width: 300px;
-    //                height: 100%;
-    //                border-left: 1px solid #ddd;
-    //                background: #f9f9f9;
-    //                display: flex;
-    //                flex-direction: column;
-    //            }
-    //            #chat-messages {
-    //                flex: 1;
-    //                overflow-y: auto;
-    //                padding: 10px;
-    //            }
-    //            #chat-input {
-    //                border-top: 1px solid #ddd;
-    //                padding: 10px;
-    //            }
-    //        </style>
-    //        <div id="chat-container">
-    //            <div id="chat-messages"></div>
-    //            <input id="chat-input" type="text" placeholder="Type a message..." />
-    //        </div>
-    //    `;
-    //}
-
-    //// Function to update UI with chat visibility
-    //function updateChatVisibility(isInParty) {
-    //    if (isInParty) {
-    //        chatContainer.classList.remove('d-none');
-    //    } else {
-    //        chatContainer.classList.add('d-none');
-    //    }
-    //}
 
     // Function to check the stored party state whenever popup is opened/closed after starting/joining party.
     // Fix for this issue from last commit as popup kept going back to start watch party stage. 
@@ -142,8 +96,6 @@ document.addEventListener('DOMContentLoaded', function() {
         selectVideoMsg.classList.toggle('d-none', hasVideo);
         inviteSection.classList.toggle('d-none', !isInParty);
         disconnectBtn.classList.toggle('d-none', !isInParty);
-
-        //updateChatVisibility(isInParty);
 
         // Store the new UI state
         chrome.storage.local.set({ 
