@@ -1,0 +1,57 @@
+:root {
+    --red: #E50914;
+    --black: #221F1F;
+    --dark-gray: #333333;
+}
+
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: var(--black);
+    color: #ffffff;
+}
+
+/* Index/Home page */ 
+.navbar {
+    background-color: var(--black);
+}
+.navbar-brand {
+    color: var(--red) !important;
+    font-weight: bold;
+}
+.btn-netflix {
+    background-color: var(--red);
+    border-color: var(--red);
+    color: white;
+}
+.btn-netflix:hover {
+    background-color: #f40612;
+    border-color: #f40612;
+    color: white;
+}
+.feature-icon {
+    font-size: 3rem;
+    color: var(--red);
+}
+
+/* Settings page */
+.btn-netflix {
+    background-color: var(--red);
+    border-color: var(--red);
+    color: white;
+}
+.btn-netflix:hover {
+    background-color: #f40612;
+    border-color: #f40612;
+    color: white;
+}
+.form-control {
+    background-color: #333;
+    border-color: #333;
+    color: #fff;
+}
+.form-control:focus {
+    background-color: #454545;
+    border-color: #454545;
+    color: #fff;
+}
+
