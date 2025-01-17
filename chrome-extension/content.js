@@ -362,26 +362,19 @@
     // (same way like I get user info from storage for the popup)
     async function getUserName() {
         return new Promise((resolve) => {
-            chrome.storage.local.get(['token'], async function(result) {
-                if (!result.token) {
-                    resolve('Guest');
-                    return;
+            chrome.runtime.sendMessage(
+                { 
+                    action: 'fetchUsername',
+                    url: 'http://localhost:3000/user' 
+                }, 
+                function(response) {
+                    if (response && response.name) {
+                        resolve(response.name);
+                    } else {
+                        resolve('Guest');
+                    }
                 }
-    
-                try {
-                    const response = await fetch('http://localhost:3000/user', {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${result.token}`
-                        }
-                    });
-                    const data = await response.json();
-                    resolve(data.name || 'Guest');
-                } catch (error) {
-                    console.error('Error fetching username:', error);
-                    resolve('Guest');
-                }
-            });
+            );
         });
     }
 

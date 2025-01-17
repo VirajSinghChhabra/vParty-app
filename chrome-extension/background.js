@@ -12,6 +12,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         return true;
     }
+
+    if (message.action === 'fetchUsername') {
+        chrome.storage.local.get(['token'], function(result) {
+            if (!result.token) {
+                sendResponse({ name: 'Guest' });
+                return;
+            }
+
+            fetch(message.url, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${result.token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                sendResponse({ name: data.name || 'Guest' });
+            })
+            .catch(error => {
+                console.error('Error fetching username:', error);
+                sendResponse({ name: 'Guest' });
+            });
+        });
+        return true; 
+    }
 });
 
  // Listen for tab updates to inject token if necessary 
