@@ -1,10 +1,10 @@
 body {
-    background-color: #333;
-    color: #fff;
+    background-color: #211f1f;
+    color: #ffffff;
     font-family: Arial, sans-serif;
-    padding: 10px;
+    padding: 6px 12px;
     width: 20em;
-    height: 20em;
+    height: 18em;
 }
 #header {
     display: flex;
@@ -19,8 +19,8 @@ body {
     cursor: pointer;
 }
 .btn-primary {
-    background-color: #ff6f61;
-    border-color: #ff6f61;
+    background-color:#E50914;
+    border-color: #E50914;
 }
 .btn-secondary {
     background-color: #6c757d;
