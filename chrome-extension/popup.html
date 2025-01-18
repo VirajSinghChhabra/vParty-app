@@ -12,15 +12,13 @@
     <div class="container-mt-3">
         <!-- Logo linked to website -->
         <div class="text-center mb-4">
-            <!-- <a href="http://localhost:3000/index" target="_blank"> -->
-                <img src="" alt="vParty Logo" class="img-fluid" id="logo-img" style="max-width: 100px;">
-            </a>
+            <a class="navbar-brand" id="logo-img">vParty</a>
         </div> 
 
         <!-- Not logged in view -->
         <div id="not-logged-in">
             <p>Please log in to start watching with vParty</p>
-            <div class="btn-group-vertical" role="group" aria-label="Vertical button group">
+            <div class="btn-group-vertical btn-outline-light d-flex justify-content-between align-items-center mb-3" role="group" aria-label="Vertical button group">
                 <button type="button" id="login-sign-up-btn" class="btn btn-primary">Login / Sign up</button>
               </div>
         </div>
@@ -41,18 +39,18 @@
 
             <!-- Netflix redirection button, if not on Netflix -->
             <div id="go-to-netflix" class="d-grid gap-2 mb-3">
-                <button class="btn btn-primary" id="redirect-btn">Go to Netflix</button>
+                <button class="btn btn-primary btn-outline-light" id="redirect-btn">Open Netflix</button>
             </div>
 
             <!-- Start Watch Party button (locked until video selected) -->
             <div id="party-section" class="text-center">
-                <button id="start-party-btn" class="btn btn-secondary" disabled>Start Watch Party</button>
+                <button id="start-party-btn" class="btn btn-secondary btn-outline-light" disabled>Start Watch Party</button>
                 <p id="select-video-msg">Please select a video.</p>
             </div>
 
             <!-- Disconnect from Party button -->
             <div class="text-center mt-2">
-                <button id="disconnect-btn" class="btn btn-danger d-none">Disconnect Party</button>
+                <button id="disconnect-btn" class="btn btn-danger btn-outline-light d-none">Disconnect Party</button>
             </div>
         
             <!-- Invite link section (hidden by default) -->
