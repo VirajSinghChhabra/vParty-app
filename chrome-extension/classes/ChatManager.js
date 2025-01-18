@@ -102,6 +102,8 @@ class ChatManager {
 
     cleanup() {
         // Quick chatGPT help as residual element was still showing and video player view wasn't resetting on closing chat
+        // The issue was only partly fixed. The cleanup on disconnect works correctly but the blank element is still showing up on closing chat. 
+        // Currently no way to open chat again if closed while in party, but it's okay. I completed my goal for this project. 
         if (this.chatContainer) {
             // Restore video player width 
             const videoPlayer = document.querySelector('.watch-video--player-view');
