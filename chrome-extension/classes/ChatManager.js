@@ -101,8 +101,20 @@ class ChatManager {
     }
 
     cleanup() {
+        // Quick chatGPT help as residual element was still showing and video player view wasn't resetting on closing chat
         if (this.chatContainer) {
+            // Restore video player width 
+            const videoPlayer = document.querySelector('.watch-video--player-view');
+            if (videoPlayer) {
+                videoPlayer.style.width = '100%';                                      
+            }                                                                           
+            // Then remove the chat container
             this.chatContainer.remove();
+            // Then fix ffor how the black empty container was still showing
+            const stylesheet = document.querySelector('link[href*="assets/chat.css"]');
+            if (stylesheet) {
+                stylesheet.remove()
+            } 
         }
     }
 }

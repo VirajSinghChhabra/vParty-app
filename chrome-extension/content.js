@@ -11,6 +11,7 @@
     let netflixPlayerAPI = null;
     let room = null;
     let videoSync = null;
+    let chatManager = null;
     const partyState = new WatchPartyState();
     let currentTime;
 
@@ -278,7 +279,7 @@
             console.log('Video synchronizer initialized');
     
             const username = await getUserName();
-            const chatManager = new ChatManager(room);
+            chatManager = new ChatManager(room);
             chatManager.setUsername(username);
 
             inviteLink = await createInviteLink(room.peerId);
@@ -342,6 +343,10 @@
 
     async function disconnectFromParty() {
         try {
+            if (chatManager) {
+                chatManager.cleanup();
+                chatManager = null;
+            }    
             if (room) {
                 room.close();
                 room = null;

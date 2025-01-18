@@ -9,6 +9,7 @@
     display: flex;
     flex-direction: column;
     border-left: 1px solid #333;
+    transition: transform 0.3s ease;
 }
 
 .chat-header {
@@ -91,9 +92,14 @@
     width: calc(100% - 300px) !important;
 }
 
+/* Adjust video player width with transition */
+.watch-video--player-view {
+    transition: width 0.3s ease !important;
+}
+
 /* To hide chat when needed */
 #watch-party-chat.hidden {
-    display: none;
+    transform: translateX(100%); 
 }
 
 /* When chat is hidden, video player takes full width */
