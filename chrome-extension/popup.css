@@ -4,7 +4,7 @@ body {
     font-family: Arial, sans-serif;
     padding: 6px 12px;
     width: 20em;
-    height: 18em;
+    height: 15em;
 }
 
 #header {
@@ -45,4 +45,3 @@ body {
 #not-logged-in, #logged-in {
     margin-top: 15px;
 }
-  
