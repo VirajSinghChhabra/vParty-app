@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "vParty Extension",
     "version": "1.0",
-    "description": "Syncs video playback and chat for a better watch party experience.",
+    "description": "Syncs video playback and chat for peers for a Netflix Watch Party experience.",
     "permissions": [ 
         "activeTab",
         "storage",
